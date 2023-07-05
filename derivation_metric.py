@@ -57,7 +57,7 @@ def optimize_score(ref, pred, metric_name, return_equations=False):
             for pos in positions:
                 pred_copy.insert(pos, '')
         
-        # Calculate and store the average ROUGE score
+        # Calculate and store the average score
         scores = [score(ref, pred, metric_name, metric) for ref, pred in zip(ref_copy, pred_copy)]
         avg_scores.append(np.mean(scores))
         alignments.append((ref_copy, pred_copy))
