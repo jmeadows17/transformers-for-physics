@@ -48,6 +48,11 @@ def score(ref, pred, metric_name, metric, fix=False):
     elif not balanced_brackets(pred) or '=' not in pred:
         return 0
 
+    # Check if LHS and RHS are identical
+    lhs, rhs = pred.split('=')
+    if lhs.strip() == rhs.strip():
+        return 0
+
     if metric_name == "rouge":
         score = metric.compute(predictions=[pred],references=[ref])['rouge2']
     if metric_name == "bleu":
