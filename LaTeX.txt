@@ -19,6 +19,8 @@
 \usepackage{esint}
 \usepackage{bbold}
 \usepackage{physics}
+\usepackage{multirow}
+\usepackage{multicol}
 %% Package options:
 %% Short version: "hyperref" and "submission" are the defaults.
 %% More verbose version:
@@ -70,7 +72,7 @@ TACL-submission anonymization requirements)}
 %%%% End TACL-instructions-specific macro block
 %%%%
 
-\title{Modelling out-of-distribution mathematical reasoning}
+\title{Improving Text Generation Metrics for\\ Evaluating Fine-Grained Physics Derivations}
 
 % Author information does not appear in the pdf unless the "acceptedWithA" option is given
 
@@ -126,13 +128,12 @@ TACL-submission anonymization requirements)}
 \maketitle
 \begin{abstract}
 
-We evaluate the performance of transformer-based models highlighting aspects of granular mathematical reasoning, by applying our framework to a novel dataset comprising highly detailed proofs and derivations in the areas of electromagnetism, quantum, and classical mechanics. Recent work modelling mathematical language has resulted in limited proof generation, quantitative question answering, and notation prediction. It is unclear whether such models trained on vast mathematical corpora have learned specific mathematical rules (e.g. differentiation), and can hence generalise to solve unseen reasoning problems out-of-distribution, or whether models simply memorise results. We zero-shot evaluate leading mathematical language models across multiple components pertaining to physics proofs. We obtain surprising baselines suggesting the state-of-the-art can perform unseen, complex reasoning in physics. 
+Write
 
 \end{abstract}
 
 \section{Introduction}
 
-Within the sub-domain of mathematical language, transformer-based models have been used for proof generation and premise selection~\cite{welleck2021towards,welleck2021naturalproofs}, formula retrieval~\cite{peng2021mathbert}, notation prediction~\cite{jo2021modeling}, math word problem solving~\cite{liang2021mwp}, autoformalisation~\cite{wuautoformalization2022}, and quantitative reasoning~\cite{lewkowycz2022solving}. Some of these applications require step-wise mathematical reasoning at the symbolic level~\cite{meadows2021similarity}, which typically involves a set of premises, a set of mathematical rules, and a goal statement, for which a coherent path from premises to goal must be achieved in order to complete and produce proofs. While more recent work~\cite{lewkowycz2022solving} exhibits step-wise mathematical reasoning, there are currently no transformer-based models able to re-derive aspects of more complex proofs. \newline\indent There are a number of well-described results in physics available on Wikipedia, but detailed proofs of those results are infrequent. If they exist, they do so at the instructional level, where many smaller steps have been omitted that might not be in practice. We aim to evaluate model reasoning at a level closer to the human physicist rather than a theorem prover~\cite{wuautoformalization2022, smallbone2021twee}, and build a dataset of physics derivations that reflect this (see Fig. \ref{fig:proof_comp}). Detailed examples are scarce, but serve as good representations of informal mathematical reasoning of the kind recently demonstrated by some models. The state-of-the-art has not seen detailed proofs before of this kind, but should be exposed to the underlying calculus. We define this data as out-of-distribution~\cite{rabe2020mathematical}. Paired with a suitable set of evaluation tasks we can use more detailed examples to understand what components of mathematical reasoning, if any, each model is capable of performing down to the smallest scale. Concretely, we contribute:
 
 \begin{figure*}[htp!]
     \centering
@@ -145,86 +146,17 @@ Within the sub-domain of mathematical language, transformer-based models have be
     \item A dataset of core physics proofs or derivations based on results described on Wikipedia. We provide variations of each derivations where a premise has been perturbed mathematically, and the resulting proof with the same reasoning ends with an equation which either preserves or destroys the surface form of the final equation in the example, compared to the core proof. We provide a dataset of X total proofs related to known results in classical and quantum mechanics, and electromagnetism. The appendix contains all examples.
 
     \item Data analysis with respect to categories of equations and subexpressions. 
-
-    \item Variations of the Masked Language Modelling (MLM) objective designed to evaluate model performance within specific aspects of a derivation or proof, and a binary classification task which predicts if the surface form of a final equation will change based on the given premise perturbation.
-
-    \item Baselines for state-of-the-art transformer-based models trained on mathematical corpora which highlight the ability of a given model to generalise to detailed unseen reasoning examples in physics.
+    
 \end{itemize}
 
 
 
 \section{Related work}
 
-\mathbf{Reasoning.} Physics derivation data has been generated before~\cite{meadows2021similarity}, but due to compatibility requirements with a computer algebra system~\cite{meurer2017sympy}, derivation units contain unnatural steps and equations a physicist would avoid in practice. The full chain of equations studied in the prior work exceeds 300, whereas the equivalent representation in this work would contain significantly less. A proof in this work is typically longer than what is found online, but is shorter and more natural than that of the previous work. \newline
-
-\noindent \mathbf{Masked language modelling.} MLM has been adapted before as an evaluation task~\cite{rabe2020mathematical, jo2021modeling} but not for modelling chains of equations... \newline
-
-\noindent \mathbf{Prompting.} \citet{wei2022chain} \citet{creswell2022selection}
-
-\section{Evaluating mathematical proficiency}
-
-\begin{figure}[htp!]
-    \centering
-    \includegraphics[width=1\linewidth]{mlm.jpg}
-    \caption{The difference between the conventional masked language modelling objective (top) and the variations considered in this work (bottom). The [SEP] token is used here to illustrate equation boundaries.}
-    \label{fig:mlm}
-\end{figure}
-
-\noindent We assume a model's mathematical ``skill'' is reflected by a number of evaluation tasks measuring separate proficiencies, such as whether the correct tokens can be predicted on the right-hand-side of an equation, or if a premise can be reconstructed. For a given proof we can predict token sequences using variations of the Masked Language Modelling objective~\cite{devlin2018bert, peng2021mathbert}, similar to the example shown in Fig. \ref{fig:mlm}. The Premise, Step, and Goal Masking tasks are analogous to reconstructing integrative, consequent, and terminal equations in~\citet{meadows2021similarity}.
-
-\subsection{Equations}
-
-\mathbf{Premise Masking.} Within each proof there exist equations that function as premises, such as the orange or blue boxed equations in Fig. \ref{fig:proof_comp}. Predicting a masked premise is different to predicting a more continuous reasoning step, such as the green boxed equation. Predicting a premise involves \textit{introducing an unseen equation}, whereas predicting a non-premise equation involves \textit{applying a mathematical rule} to an equation \textit{already considered in the proof}. We mask all tokens corresponding to a single premise. In the frequent case where a single derivation contains multiple premises, sequence variations are generated by masking each premise once per variation. \newline
-
-\noindent \mathbf{Step Masking.} Non-premise equation sequences are reasoning chains that apply mathematical rules to prior equations, to evolve the derivation towards a goal equation (\textit{e.g.,} appendix A.2 (24) to (28)). One derivation will lead to multiple masking variations, where only one equation is masked per derivation, but all suitable steps are masked. \newline 
-
-\noindent \mathbf{Goal Masking.} It is assumed the final equation is the goal of a proof. By masking the final equation, we ask the model to predict the global goal of the reasoning itself, rather than local progressions towards that end. As there is one goal equation per derivation, only one unique sequence per derivation will be considered by this task. \newline 
-
-\subsubsection{Expressions, subexpressions and identifiers}
-
-Within the Premise, Step, and Goal categories, we can also mask \textit{parts} of equations leading to intuitively easier modelling tasks. If we refer to small-scale symbols (\textit{e.g., $\varepsilon_0$}) as \textit{identifiers}~\cite{pagael2014mathematical,schubotz2016semantification,alexeeva2020mathalign}, then \textit{expressions} are sequences of identifiers, where a given equation/inequality consists of at least two expressions or identifiers related via a single equality/inequality symbol. \newline
-
-\noindent \mathbf{LHS/RHS Masking.} Easier than modelling full equations, we consider either side of an equality. For a given proof, for each equation, a single expression one side of an equality is masked, such that the model must predict each LHS and RHS expression of every suitable equation. \newline 
-
-\noindent \mathbf{Subexpression Masking.} Subexpressions are collections of consecutive identifiers smaller than full expressions found either side of an equality. For $n \in \{2,3,4\}$, we mask tokens associated with a subexpression consisting of $n$ consecutive identifers. \newline
-
-\noindent \mathbf{Random Identifier Masking.} For $n \in \{2,3,4\}$, we also mask tokens associated with $n$ random identifiers present within an equation. \newline
-
-\noindent \mathbf{Single Identifier Masking.} At a smaller scale, the easiest task involves predicting consecutive tokens comprising a single identifier, with variations stemming from masking all possible single identifiers.
-
-\subsection{Premise perturbation invariance}
-
-Masked language modelling alone is insufficient to determine the mathematical proficiency of a model. One example of what is missing, is \textit{the ability to predict mathematical changes to a goal equation due to purposeful changes to previous parts of the derivation}. For example, given the premise $y = x$, if we perturb this premise by adding a constant such that $y = x + C$, and in the corresponding derivation there is a $dy/dx$ term, that term will be invariant under this premise perturbation, and it may be the case that the surface form of the downstream goal equation is also conserved. For a given premise perturbation, the surface form of the goal equation will either be mathematically identical to the unperturbed derivation, or not. We can predict this invariance by framing the problem as binary classification. \mathbf{TBC}
-
-\subsection{Chain of thought prompting} Could use some help here Marco
-
-%\section{Models}
-
-% Use token probability given by model during MLM tasks as input to a custom token selection function to improve equation reconstruction.
 
 
 
-\begin{itemize}
-    \item Token ratio, $R_T = \frac{|T_P|}{|T_M|}$.
-
-    \item Identifier ratio, $R_I = \frac{|I_P|}{|I_M|}$.
-
-    \item Proportion of predicted tokens in correct positions, $P$.
-
-    \item Damerau-Levenshtein distance between predicted sequence and original sequence, $D$.
-
-    \item Top-n accuracy~\cite{jo2021modeling}.
-
-    \item MRR~\cite{jo2021modeling}.
-
-    \item Exact matching~\cite{rabe2020mathematical}.
-    
-\end{itemize}
-
-
-
-
-
+\section{Results}
 
 
 
@@ -232,6 +164,135 @@ Masked language modelling alone is insufficient to determine the mathematical pr
 \bibliographystyle{acl_natbib}
 
 \appendix
+
+\iffalse
+{\renewcommand{\arraystretch}{1}%
+\begin{table}[h!]
+	\centering
+	\scalebox{0.82}{
+		\begin{tabular}{@{}l|c|c|c|c|c|c @{}}
+			& Static & VR & EE & AG & SR & Average\\
+			\hline
+            ROUGE & $0.5$ & $-0.5$ & $-0.5$ & $0.5$ & $0.5$ & $0.1$\\
+            BLEU & $0.5$ & $-0.5$ & $-0.5$ & $-0.5$ & $0.5$ & $-0.1$\\
+            BLEURT & $0.5$ & $-0.5$ & $-0.5$ & $-0.5$ & $-0.5$ & $-0.3$\\
+            GLEU & $0.5$ & $0.5$ & $-0.5$ & $0.5$ & $-0.5$ & $0.1$\\
+            XGB & $0.5$ & $-0.5$ & $1.0$ & $0.5$ & $0.5$ & $\mathbf{0.4}$\\
+             ROUGE+ & $0.5$ & $-0.5$ & $-0.5$ & $-0.5$ & $0.5$ & $-0.1$\\
+             BLEU+ & $0.5$ & $-0.5$ & $-0.5$ & $-0.5$ & $0.5$ & $-0.1$\\
+             GLEU+ & $0.5$ & $-0.5$ & $-0.5$ & $-0.5$ & $0.5$ & $-0.1$\\
+		\end{tabular}
+		}
+	\caption{\textbf{Model performance rankings.} Spearman's ranking coefficients calculated by comparing metric-based rankings to manual rankings, based on the conventional performance of FLAN-T5-large, GPT-4, and ChatGPT, from Table~\ref{tab:detailed_rankings}.}
+	\label{tab:spearman_performance}
+\end{table}}
+
+{\renewcommand{\arraystretch}{1}%
+\begin{table}[h!]
+	\centering
+	\scalebox{0.9}{
+		\begin{tabular}{@{}l|c|c|c|c|c @{}}
+			& VR & EE & AG & SR & Average\\
+			\hline
+            ROUGE & $0.5$ & $-0.5$ & $-0.5$ & $-0.5$ & $-0.3$\\
+            BLEU & $0.5$ & $-0.5$ & $-0.5$ & $-0.5$ & $-0.3$\\
+            BLEURT & $0.5$ & $1.0$ & $0.5$ & $-0.5$ & $\mathbf{0.4}$\\
+            GLEU & $0.5$ & $-0.5$ & $-0.5$ & $-0.5$ & $-0.3$\\
+            XGB & $1.0$ & $1.0$ & $0.5$ & $-1.0$ & $\mathbf{0.4}$\\
+            ROUGE+ & $1.0$ & $0.5$ & $-1.0$ & $-0.5$ & $0.0$\\
+            BLEU+ & $1.0$ & $0.5$ & $-1.0$ & $-0.5$ & $0.0$\\
+            GLEU+ & $1.0$ & $0.5$ & $-1.0$ & $-0.5$ & $0.0$\\
+            
+		\end{tabular}
+		}
+	\caption{\textbf{Model generalisation rankings}. Spearman coefficients show how accurately each metric ranks \textit{each model's generalisation to a given perturbation}, measured by a performance drop from the static scores (such as Table~\ref{tab:performance_difference}), calculated from Table~\ref{tab:difference_rankings}.}
+	\label{tab:spearman_model_difficulty}
+\end{table}}
+
+{\renewcommand{\arraystretch}{1}%
+\begin{table}[h!]
+	\centering
+	\scalebox{0.9}{
+		\begin{tabular}{@{}l|c|c|c|c @{}}
+			 & FLAN-T5 & GPT-4 & ChatGPT & Average\\
+			\hline
+            ROUGE & $0.4$ & $0.8$ & $0.4$ & $0.5$\\
+            BLEU & $0.4$ & $0.8$ & $0.6$ & $0.6$\\
+            BLEURT & $0.2$ & $0.8$ & $0.8$ & $0.6$\\
+            GLEU & $0.6$ & $0.8$ & $0.6$ & $\mathbf{0.7}$\\
+            XGB & $0.4$ & $-0.3$ & $-0.2$ & $0.0$\\
+            ROUGE+ & $0.4$ & $0.8$ & $0.8$ & $\mathbf{0.7}$\\
+            BLEU+ & $0.4$ & $0.8$ & $0.8$ & $\mathbf{0.7}$\\
+            GLEU+ & $0.4$ & $0.8$ & $0.8$ & $\mathbf{0.7}$\\
+		\end{tabular}
+		}
+	\caption{\textbf{Perturbation generalisation rankings.} Spearman coefficients show how accurately each metric ranks \textit{model generalisation to each perturbation}, measured by a performance drop from the static scores, calculated from Table~\ref{tab:difference_rankings}.}
+	\label{tab:spearman_pert_difficulty}
+\end{table}}
+
+{\renewcommand{\arraystretch}{1}%
+\begin{table*}[h!]
+	\centering
+	\scalebox{0.6}{
+		\begin{tabular}{c|c|c|c|c|c|c|c|c|c| c |c|c|c}
+			Perturbation & Model & Incorrect eqs & Repeating eqs & Redundant eqs & Manual rank & ROUGE & BLEU & BLEURT & GLEU & XGB & ROUGE+ & BLEU+ & GLEU+\\
+			\hline
+                \multirow{3}{*}{Static} & FLAN-T5 & 2 & 0 & 0 & 2 & 92 & 86 & 76 & 87 & 77 & 89.3 & 89.5 & 89.5\\
+                & GPT-4 & 0 & 0 & 0 & 1 & 84 & 73 & 65 & 76 & 55 & 77.2 & 75.9 & 76.4\\
+                & ChatGPT & 2 & 2 & 0 & 3 & 79 & 69 & 64 & 72 & 47 & 70.5 & 69.6 & 70.2\\
+                \hline
+                \multirow{3}{*}{VR} & FLAN-T5 & 6 & 2 & 1 & 3 & 85 & 77 & 75 & 78 & 55 & 78.4 & 77.6 & 77.7\\
+                & GPT-4 & 0 & 0 & 0 & 1 & 85 & 77 & 70 & 80 & 53 & 77.5 & 77.0 & 77.6\\
+                & ChatGPT & 4 & 1 & 1 & 2 & 81 & 75 & 70 & 76 & 41 & 69.6 & 70.4 & 71.0\\
+                \hline
+                \multirow{3}{*}{EE} & FLAN-T5 & 5 & 3 & 2 & 3 & 90 & 85 & 73 & 85 & 19 & 81.3 & 79.1 & 79.6\\
+                & GPT-4 & 0 & 0 & 0 & 1 & 84 & 75 & 65 & 78 & 34 & 74.6 & 74.3 & 74.9\\
+                & ChatGPT & 4 & 2 & 0 & 2 & 82 & 75 & 62 & 77 & 26 & 70.9 & 70.9 & 71.7\\
+                \hline 
+                \multirow{3}{*}{AG} & FLAN-T5 & 3 & 1 & 0 & 2 & 94 & 90 & 79 & 91 & 56 & 94.2 & 94.0 & 94.0\\
+                & GPT-4 & 0 & 0 & 0 & 1 & 84 & 73 & 66 & 77 & 34 & 75.3 & 74.2 & 74.9\\
+                & ChatGPT & 4 & 1 & 0 & 3 & 84 & 78 & 70 & 79 & 22 & 76.7 & 76.5 & 77.1\\
+                \hline
+                \multirow{3}{*}{SR} & FLAN-T5 & 3 & 1 & 1 & 2 & 85 & 78 & 65 & 79 & 43 & 73.9 & 73.1 & 73.2\\
+                & GPT-4 & 3 & 0 & 2 & 1 & 79 & 66 & 54 & 70 & 38 & 65.5 & 63.7 & 64.7\\
+                & ChatGPT & 5 & 0 & 2 & 3 & 76 & 66 & 55 & 69 & 26 & 62.3 & 60.3 & 61.1\\ 
+		\end{tabular}
+		}
+	\caption{Values used for calculating Spearman's rank coefficients in Table~\ref{tab:spearman_performance}. Rounded values are not used to make calculations, and are for ease of reading. Incorrect/repeating/redundant eqs represents the number of derivations that include that error (not the total number of errors). A model with highest performance has a manual rank of 1.}
+	\label{tab:detailed_rankings}
+\end{table*}}
+
+{\renewcommand{\arraystretch}{1}%
+\begin{table*}[h!]
+	\centering
+	\scalebox{0.6}{
+		\begin{tabular}{c|c|c|c|c|c|c|c|c|c| c |c|c|c}
+			Model & Perturbation & Incorrect eqs & Repeating eqs & Redundant eqs & Manual rank & ROUGE & BLEU & BLEURT & GLEU & XGB & ROUGE+ & BLEU+ & GLEU+ \\
+			\hline
+                \multirow{4}{*}{FLAN-T5} & VR & 4 & 2 & 1 & 4 & 6.1 & 8.3 & 1.5 & 8.3 & 22.0 & 10.9 & 11.9 & 11.8\\
+                & EE & 3 & 3 & 2 & 3 & 1.0 & -0.1 & 2.8 & 0.3 & 57.2 & 8.0 & 10.4 & 9.9\\
+                & AG & 1 & 1 & 0 & 1 & -0.4 & -1.5 & -0.5 & -1.3 & 20.6 & -4.9 & -4.5 & -4.5\\
+                & SR & 1 & 1 & 1 & 2 & 7.9 & 9.3 & 12.1 & 8.3 & 33.5 & 15.4 & 16.4 & 16.3\\
+                \hline
+                \multirow{4}{*}{GPT-4} & VR & 0 & 0 & 0 & 1 & 0.8 & 0.3 & -3.6 & 0.4 & 2.2 & -0.3 & -1.1 & -1.2\\
+                & EE & 0 & 0 & 0 & 1 & 1.6 & 3.5 & 0.6 & 3.1 & 20.7 & 2.6 & 1.6 & 1.5\\
+                & AG & 0 & 0 & 0 & 1 & 1.6 & 4.4 & 0.5 & 3.2 & 20.8 & 1.9 & 1.7 & 1.5\\
+                & SR & 3 & 0 & 2 & 4 & 5.8 & 8.0 & 11.5 & 6.3 & 17.4 & 11.7 & 12.2 & 11.7\\
+                \hline 
+                \multirow{4}{*}{ChatGPT} & VR & 2 & -1 & 1 & 2 & -0.2 & -3.4 & -8.2 & -2.3 & 6.2 & 0.9 & -0.8 & -0.8\\
+                & EE & 2 & 0 & 0 & 3 & 0.9 & -0.5 & 1.5 & -0.5 & 21.2 & -0.4 & -1.3 & -1.5\\
+                & AG & 2 & -1 & 0 & 1 & 1.1 & -0.5 & 0.6 & -0.5 & 25.0 & -6.2 & -6.9 & -6.9\\
+                & SR & 3 & -2 & 2 & 4 & 5.4 & 5.0 & 11.1 & 3.9 & 21.3 & 8.2 & 9.3 & 9.1\\
+                
+		\end{tabular}
+		}
+	\caption{Values used for calculating Spearman's rank coefficients in Tables~\ref{tab:spearman_model_difficulty} and \ref{tab:spearman_pert_difficulty}. Incorrect/repeating/redundant eqs represents the number of derivations that include that error in the relevant perturbed derivations, \textit{minus} those from the static derivations. Exactly these values are used in calculations. A model generalises best to a perturbation with a manual rank of 1.}
+	\label{tab:difference_rankings}
+\end{table*}}
+\fi
+
+\bibliography{tacl2021}
+\bibliographystyle{acl_natbib}
 
 \section{Electromagnetism}
 
@@ -4204,9 +4265,2014 @@ Masked language modelling alone is insufficient to determine the mathematical pr
 \end{equation}
 
 
-\bibliography{tacl2021}
-\bibliographystyle{acl_natbib}
+\subsection{Heisenberg picture: momentum evolution 1}
+
+\begin{equation}
+%PREM
+    \hat{H}(t) = \frac{\hat{p}(t)^2}{2m} + \frac{m\omega^2 \hat{x}(t)^2}{2}
+\end{equation}
+
+\begin{equation}
+    \frac{\partial \hat{H}(t)}{\partial \hat{x}(t)} = \frac{\partial}{\partial \hat{x}(t)} (\frac{\hat{p}(t)^2}{2m} + \frac{m\omega^2 \hat{x}(t)^2}{2})
+\end{equation}
+
+\begin{equation}
+    \frac{\partial}{\partial \hat{x}(t)} (\frac{\hat{p}(t)^2}{2m} + \frac{m\omega^2 \hat{x}(t)^2}{2}) = \frac{2m\omega^2\hat{x}(t)}{2}
+\end{equation}
+
+\begin{equation}
+    \frac{\partial \hat{H}(t)}{\partial \hat{x}(t)} = -m\omega^2\hat{x}(t)
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{\partial \hat{H}(t)}{\partial \hat{x}(t)} = \frac{d\hat{p}(t)}{dt}
+\end{equation}
+
+\begin{equation}
+    \frac{d\hat{p}(t)}{dt} = -m\omega^2\hat{x}(t)
+\end{equation}
+
+\subsection{Heisenberg picture: momentum evolution 2}
+
+\begin{equation}
+%PREM
+    \frac{d\hat{p}(t)}{dt} = -m\omega^2\hat{x}(t)
+\end{equation}
+
+\begin{equation}
+    \frac{d}{dt} \frac{d\hat{p}(t)}{dt} =  \frac{d}{dt} (-m\omega^2\hat{x}(t))
+\end{equation}
+
+\begin{equation}
+    \frac{d}{dt} \frac{d\hat{p}(t)}{dt} =  -m\omega^2  \frac{d\hat{x}(t)}{dt}
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{d}{dt} \frac{d\hat{p}(t)}{dt} =  \frac{d^2\hat{p}(t)}{dt^2}
+\end{equation}
+
+\begin{equation}
+    \frac{d^2\hat{p}(t)}{dt^2} = -m\omega^2  \frac{d\hat{x}(t)}{dt}
+\end{equation}
+
+\subsection{Heisenberg picture: momentum evolution 3}
+
+\begin{equation}
+%PREM
+    \frac{d^2\hat{p}(t)}{dt^2} = -m\omega^2  \frac{d\hat{x}(t)}{dt}
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{d\hat{x}(t)}{dt} = \frac{\hat{p}(t)}{m}
+\end{equation}
+
+\begin{equation}
+    \frac{d^2\hat{p}(t)}{dt^2} = -m\omega^2 \frac{\hat{p}(t)}{m}
+\end{equation}
+
+\begin{equation}
+    \frac{d^2\hat{p}(t)}{dt^2} = -\omega^2 \hat{p}(t)
+\end{equation}
+
+\subsection{Heisenberg picture: momentum evolution 4}
+
+\begin{equation}
+%PREM
+    \hat{p}(t) = A\cos(\omega t) + B\sin(\omega t)
+\end{equation}
+
+\begin{equation}
+    \hat{p}(0) = A\cos(0) + B\sin(0)
+\end{equation}
+
+\begin{equation}
+    \hat{p}(0) = A
+\end{equation}
+
+\begin{equation}
+    \frac{d\hat{p}(t)}{dt} = \frac{d}{dt} ( A\cos(\omega t) + B\sin(\omega t))
+\end{equation}
+
+\begin{equation}
+    \frac{d\hat{p}(t)}{dt} =  A\frac{d}{dt}\cos(\omega t) + B\frac{d}{dt}\sin(\omega t)
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{d}{dt}\cos(\omega t) = -\omega \sin(\omega t)
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{d}{dt}\sin(\omega t) = \omega \cos(\omega t)
+\end{equation}
+
+\begin{equation}
+    \frac{d\hat{p}(t)}{dt} = -A\omega \sin(\omega t) + B\omega \cos(\omega t)
+\end{equation}
+
+\subsection{Heisenberg picture: momentum evolution 5}
+
+\begin{equation}
+%PREM
+    \frac{d\hat{p}(t)}{dt} = -A\omega \sin(\omega t) + B\omega \cos(\omega t)
+\end{equation}
+
+\begin{equation}
+    \eval{\frac{d\hat{p}(t)}{dt}}_{t=0} = -A\omega \sin(0) + B\omega \cos(0)
+\end{equation}
+
+\begin{equation}
+    \eval{\frac{d\hat{p}(t)}{dt}}_{t=0} = B \omega
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{d\hat{p}(t)}{dt} = -m\omega^2\hat{x}(t)
+\end{equation}
+
+\begin{equation}
+    \eval{\frac{d\hat{p}(t)}{dt}}_{t=0} = -m\omega^2 \hat{x}(0)
+\end{equation}
+
+\begin{equation}
+    B \omega = -m\omega^2 \hat{x}(0)
+\end{equation}
+
+\begin{equation}
+    B = -m \omega \hat{x}(0)
+\end{equation}
+
+
+\subsection{Heisenberg picture: momentum evolution 6}
+
+\begin{equation}
+%PREM
+     \hat{p}(t) = \hat{p}(0) \cos(\omega t) -\omega m \hat{x}(0) \sin(\omega t)
+\end{equation}
+
+\begin{equation}
+    \frac{d\hat{p}(t)}{dt} = \frac{d}{dt} ( \hat{p}(0) \cos(\omega t) -\omega m \hat{x}(0) \sin(\omega t) )
+\end{equation}
+
+\begin{equation}
+    \frac{d\hat{p}(t)}{dt} = \frac{d}{dt} \hat{p}(0) \cos(\omega t) - \frac{d}{dt} \omega m \hat{x}(0) \sin(\omega t) 
+\end{equation}
+
+\begin{equation}
+    \frac{d}{dt} \cos(\omega t) = -\omega\sin(\omega t)
+\end{equation}
+
+\begin{equation}
+    \frac{d}{dt} \sin(\omega t) = \omega\cos(\omega t)
+\end{equation}
+
+\begin{equation}
+    \frac{d\hat{p}(t)}{dt} = -\omega \hat{p}(0) \sin(\omega t) - \omega^2 m \hat{x}(0) \cos(\omega t)
+\end{equation}
+
+\subsection{Heisenberg picture: momentum evolution 7}
+
+\begin{equation}
+%PREM
+    \frac{d\hat{p}(t)}{dt} = -\omega \hat{p}(0) \sin(\omega t) - \omega^2 m \hat{x}(0) \cos(\omega t)
+\end{equation}
+
+\begin{equation}
+    \frac{d}{dt} \frac{d\hat{p}(t)}{dt} = \frac{d}{dt} (-\omega \hat{p}(0) \sin(\omega t) - \omega^2 m \hat{x}(0) \cos(\omega t))
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{d}{dt} \frac{d\hat{p}(t)}{dt} = \frac{d^2\hat{p}(t)}{dt^2}
+\end{equation}
+
+\begin{equation}
+    \frac{d^2\hat{p}(t)}{dt^2} = \frac{d}{dt} (-\omega \hat{p}(0) \sin(\omega t) - \omega^2 m \hat{x}(0) \cos(\omega t))
+\end{equation}
+
+\begin{equation}
+    \frac{d^2\hat{p}(t)}{dt^2} =  -\omega \hat{p}(0) \frac{d}{dt}\sin(\omega t) - \omega^2 m \hat{x}(0) \frac{d}{dt}\cos(\omega t)
+\end{equation}
+
+\subsection{Heisenberg picture: momentum evolution 8}
+
+\begin{equation}
+%PREM
+    \frac{d^2\hat{p}(t)}{dt^2} =  -\omega \hat{p}(0) \frac{d}{dt}\sin(\omega t) - \omega^2 m \hat{x}(0) \frac{d}{dt}\cos(\omega t)
+\end{equation}
+
+\begin{equation}
+    \frac{d}{dt} \cos(\omega t) = -\omega\sin(\omega t)
+\end{equation}
+
+\begin{equation}
+    \frac{d}{dt} \sin(\omega t) = \omega\cos(\omega t)
+\end{equation}
+
+\begin{equation}
+    \frac{d^2\hat{p}(t)}{dt^2} =  -\omega^2 \hat{p}(0) \cos(\omega t) + \omega^3 m \hat{x}(0) \sin(\omega t)
+\end{equation}
+
+\begin{equation}
+    \frac{d^2\hat{p}(t)}{dt^2} = -\omega^2 ( \hat{p}(0) \cos(\omega t) - \omega m \hat{x}(0) \sin(\omega t) )
+\end{equation}
+
+\begin{equation}
+%PREM
+     \hat{p}(t) = \hat{p}(0) \cos(\omega t) -\omega m \hat{x}(0) \sin(\omega t)
+\end{equation}
+
+\begin{equation}
+    \frac{d^2\hat{p}(t)}{dt^2} = -\omega^2 \hat{p}(t)
+\end{equation}
+
+
+\subsection{Heisenberg picture: position commutator 1}
+
+\begin{equation}
+%PREM
+    \hat{x}(t) = \hat{x}_0 \cos(\omega t) + \frac{\hat{p}_0}{\omega m} \sin(\omega t)
+\end{equation}
+
+\begin{equation}
+%PREM
+    \comm{\hat{x}(t_1)}{\hat{x}(t_2)} = \hat{x}(t_1)\hat{x}(t_2) - \hat{x}(t_2)\hat{x}(t_1)
+\end{equation}
+
+\begin{multline}
+    \comm{\hat{x}(t_1)}{\hat{x}(t_2)} = (\hat{x}_0 \cos(\omega t_1) + \frac{\hat{p}_0}{\omega m} \sin(\omega t_1)) \cdot \\ (\hat{x}_0 \cos(\omega t_2) + \frac{\hat{p}_0}{\omega m} \sin(\omega t_2)) \\ - (\hat{x}_0 \cos(\omega t_2) + \frac{\hat{p}_0}{\omega m} \sin(\omega t_2)) \cdot \\ (\hat{x}_0 \cos(\omega t_1) + \frac{\hat{p}_0}{\omega m} \sin(\omega t_1))
+\end{multline}
+
+
+\begin{multline}
+    \comm{\hat{x}(t_1)}{\hat{x}(t_2)} = \hat{x}_0\hat{p}_0\frac{1}{\omega m} (\cos(\omega t_1)\sin(\omega t_2) \\ - \cos(\omega t_2)\sin(\omega t_1)) \\ + \hat{p}_0\hat{x}_0\frac{1}{\omega m} (\sin(\omega t_1)\cos(\omega t_2) \\ - \sin(\omega t_2)\cos(\omega t_1))
+\end{multline}
+
+
+\subsection{Heisenberg picture: position commutator 2}
+
+\begin{multline}
+%PREM
+    \comm{\hat{x}(t_1)}{\hat{x}(t_2)} = \hat{x}_0\hat{p}_0\frac{1}{\omega m} (\cos(\omega t_1)\sin(\omega t_2) \\ - \cos(\omega t_2)\sin(\omega t_1)) \\ + \hat{p}_0\hat{x}_0\frac{1}{\omega m} (\sin(\omega t_1)\cos(\omega t_2) \\ - \sin(\omega t_2)\cos(\omega t_1))
+\end{multline}
+
+\begin{multline}
+%PREM
+    \sin(\omega t_1)\cos(\omega t_2) - \cos(\omega t_1)\sin(\omega t_2) \\ = \sin(\omega t_1 - \omega t_2)
+\end{multline}
+
+\begin{multline}
+    \comm{\hat{x}(t_1)}{\hat{x}(t_2)} = \hat{x}_0\hat{p}_0\frac{1}{\omega m} \sin(\omega t_2 - \omega t_1) \\ + \hat{p}_0\hat{x}_0\frac{1}{\omega m} (\sin(\omega t_1)\cos(\omega t_2) \\ - \sin(\omega t_2)\cos(\omega t_1))
+\end{multline}
+
+\begin{multline}
+%PREM
+    \sin(\omega t_2)\cos(\omega t_1) - \cos(\omega t_2)\sin(\omega t_1) \\ = \sin(\omega t_2 - \omega t_1)
+\end{multline}
+
+\begin{multline}
+    \comm{\hat{x}(t_1)}{\hat{x}(t_2)} = \hat{x}_0\hat{p}_0\frac{1}{\omega m} \sin(\omega t_2 - \omega t_1) \\ + \hat{p}_0\hat{x}_0\frac{1}{\omega m} \sin(\omega t_1 - \omega t_2)
+\end{multline}
+
+\subsection{Heisenberg picture: position commutator 3}
+
+\begin{multline}
+%PREM
+    \comm{\hat{x}(t_1)}{\hat{x}(t_2)} = \hat{x}_0\hat{p}_0\frac{1}{\omega m} \sin(\omega t_2 - \omega t_1) \\ + \hat{p}_0\hat{x}_0\frac{1}{\omega m} \sin(\omega t_1 - \omega t_2)
+\end{multline}
+
+\begin{equation}
+%PREM
+    \sin(\omega t_1 - \omega t_2) = - \sin(\omega t_2 - \omega t_1)
+\end{equation}
+
+\begin{multline}
+    \comm{\hat{x}(t_1)}{\hat{x}(t_2)} = \hat{x}_0\hat{p}_0\frac{1}{\omega m} \sin(\omega t_2 - \omega t_1) \\ -  \hat{p}_0\hat{x}_0\frac{1}{\omega m} \sin(\omega t_2 - \omega t_1)
+\end{multline}
+
+\begin{equation}
+    \comm{\hat{x}(t_1)}{\hat{x}(t_2)} = \frac{1}{\omega m} (\hat{x}_0\hat{p}_0 - \hat{p}_0\hat{x}_0) \sin(\omega t_2 - \omega t_1)
+\end{equation}
+
+\subsection{Heisenberg picture: position commutator 4}
+
+\begin{equation}
+%PREM
+    \comm{\hat{x}(t_1)}{\hat{x}(t_2)} = \frac{1}{\omega m} (\hat{x}_0\hat{p}_0 - \hat{p}_0\hat{x}_0) \sin(\omega t_2 - \omega t_1)
+\end{equation}
+
+\begin{equation}
+%PREM
+    \hat{x}_0\hat{p}_0 - \hat{p}_0\hat{x}_0 = \comm{\hat{x}_0}{\hat{p}_0}
+\end{equation}
+
+\begin{equation}
+%PREM
+    \comm{\hat{x}_0}{\hat{p}_0} = i\hbar
+\end{equation}
+
+\begin{equation}
+    \hat{x}_0\hat{p}_0 - \hat{p}_0\hat{x}_0 = i\hbar
+\end{equation}
+
+\begin{equation}
+    \comm{\hat{x}(t_1)}{\hat{x}(t_2)} = \frac{i\hbar}{\omega m} \sin(\omega t_2 - \omega t_1)
+\end{equation}
+
+
+\subsection{Heisenberg picture: momentum commutator}
+
+\begin{equation}
+%PREM
+    \hat{p}(t) = \hat{p}_0 \cos(\omega t) - m\omega \hat{x}_0 \sin(\omega t)
+\end{equation}
+
+\begin{equation}
+%PREM
+    \comm{\hat{p}(t_1)}{\hat{p}(t_2)} = \hat{p}(t_1)\hat{p}(t_2) - \hat{p}(t_2)\hat{p}(t_1)
+\end{equation}
+
+\begin{multline}
+    \comm{\hat{p}(t_1)}{\hat{p}(t_2)} = (\hat{p}_0 \cos(\omega t_1) - m\omega \hat{x}_0 \sin(\omega t_1)) \cdot \\ (\hat{p}_0 \cos(\omega t_2) - m\omega \hat{x}_0 \sin(\omega t_2)) \\ + (\hat{p}_0 \cos(\omega t_2) - m\omega \hat{x}_0 \sin(\omega t_2)) \cdot \\ (\hat{p}_0 \cos(\omega t_1) - m\omega \hat{x}_0 \sin(\omega t_1))
+\end{multline}
+
+\begin{multline}
+    \comm{\hat{p}(t_1)}{\hat{p}(t_2)} = m\omega \hat{p}_0 \hat{x}_0 (\cos(\omega t_2)\sin(\omega t_1) \\ - \cos(\omega t_1)\sin(\omega t_2)) \\ + m\omega \hat{x}_0 \hat{p}_0 (\sin(\omega t_2)\cos(\omega t_1) \\ - \sin(\omega t_1)\cos(\omega t_2))
+\end{multline}
+
+\subsection{Heisenberg picture: momentum commutator 2}
+
+\begin{multline}
+%PREM
+    \comm{\hat{p}(t_1)}{\hat{p}(t_2)} = m\omega \hat{p}_0 \hat{x}_0 (\cos(\omega t_2)\sin(\omega t_1) \\ - \cos(\omega t_1)\sin(\omega t_2)) \\ + m\omega \hat{x}_0 \hat{p}_0 (\sin(\omega t_2)\cos(\omega t_1) \\ - \sin(\omega t_1)\cos(\omega t_2))
+\end{multline}
+
+\begin{multline}
+%PREM
+    \sin(\omega t_1)\cos(\omega t_2) - \cos(\omega t_1)\sin(\omega t_2) \\ = \sin(\omega t_1 - \omega t_2)
+\end{multline}
+
+\begin{multline}
+    \comm{\hat{p}(t_1)}{\hat{p}(t_2)} = m\omega \hat{p}_0 \hat{x}_0 (\cos(\omega t_2)\sin(\omega t_1) \\ - \cos(\omega t_1)\sin(\omega t_2)) \\ + m\omega \hat{x}_0 \hat{p}_0 \sin(\omega t_1 - \omega t_2)
+\end{multline}
+
+\begin{multline}
+%PREM
+    \sin(\omega t_2)\cos(\omega t_1) - \cos(\omega t_2)\sin(\omega t_1) \\ = \sin(\omega t_2 - \omega t_1)
+\end{multline}
+
+\begin{multline}
+    \comm{\hat{p}(t_1)}{\hat{p}(t_2)} = m\omega \hat{p}_0 \hat{x}_0 \sin(\omega t_2 - \omega t_1) \\ + m\omega \hat{x}_0 \hat{p}_0 \sin(\omega t_1 - \omega t_2)
+\end{multline}
+
+\subsection{Heisenberg picture: momentum commutator 3}
+
+\begin{multline}
+%PREM
+    \comm{\hat{p}(t_1)}{\hat{p}(t_2)} = m\omega \hat{p}_0 \hat{x}_0 \sin(\omega t_2 - \omega t_1) \\ + m\omega \hat{x}_0 \hat{p}_0 \sin(\omega t_1 - \omega t_2)
+\end{multline}
+
+\begin{equation}
+%PREM
+    \sin(\omega t_1 - \omega t_2) = - \sin(\omega t_2 - \omega t_1)
+\end{equation}
+
+\begin{multline}
+    \comm{\hat{p}(t_1)}{\hat{p}(t_2)} = m\omega \hat{x}_0\hat{p}_0 \sin(\omega t_2 - \omega t_1) \\ - m \omega \hat{p}_0\hat{x}_0 \sin(\omega t_2 - \omega t_1)
+\end{multline}
+
+\begin{multline}
+    \comm{\hat{p}(t_1)}{\hat{p}(t_2)} = m\omega (\hat{x}_0\hat{p}_0 - \hat{x}_0\hat{p}_0) \sin(\omega t_2 - \omega t_1)
+\end{multline}
+
+\begin{equation}
+%PREM
+    \hat{x}_0\hat{p}_0 - \hat{p}_0\hat{x}_0 = i\hbar
+\end{equation}
+
+\begin{equation}
+    \comm{\hat{p}(t_1)}{\hat{p}(t_2)} = i\hbar m\omega \sin(\omega t_2 - \omega t_1)
+\end{equation}
+
+
+
+\subsection{Heisenberg picture: position-momentum commutator}
+
+\begin{equation}
+%PREM
+    \hat{x}(t) = \hat{x}_0 \cos(\omega t) + \frac{\hat{p}_0}{\omega m} \sin(\omega t)
+\end{equation}
+
+\begin{equation}
+%PREM
+    \hat{p}(t) = \hat{p}_0 \cos(\omega t) - m\omega \hat{x}_0 \sin(\omega t)
+\end{equation}
+
+\begin{equation}
+%PREM
+    \comm{\hat{x}(t_1)}{\hat{p}(t_2)} = \hat{x}(t_1)\hat{p}(t_2) - \hat{p}(t_2)\hat{x}(t_1)
+\end{equation}
+
+\begin{multline}
+    \comm{\hat{x}(t_1)}{\hat{p}(t_2)} = (\hat{x}_0 \cos(\omega t_1) + \frac{\hat{p}_0}{\omega m} \sin(\omega t_1)) \cdot \\ (\hat{p}_0 \cos(\omega t_2) - m\omega \hat{x}_0 \sin(\omega t_2)) \\ + (\hat{x}_0 \cos(\omega t_2) + \frac{\hat{p}_0}{\omega m} \sin(\omega t_2)) \cdot \\ (\hat{p}_0 \cos(\omega t_1) - m\omega \hat{x}_0 \sin(\omega t_1))
+\end{multline}
+
+\begin{multline}
+    \comm{\hat{x}(t_1)}{\hat{p}(t_2)} = \hat{x}_0 \hat{p}_0 (\cos(\omega t_2) \cos(\omega t_1) \\ + \sin(\omega t_2) \sin(\omega t_1))  \\ - \hat{p}_0 \hat{x}_0 (\sin(\omega t_2) \sin(\omega t_1)) \\ + \cos(\omega t_2) \cos(\omega t_1))
+\end{multline}
+
+\subsection{Heisenberg picture: position-momentum commutator 2}
+
+\begin{multline}
+%PREM
+    \comm{\hat{x}(t_1)}{\hat{p}(t_2)} = \hat{x}_0 \hat{p}_0 (\cos(\omega t_2) \cos(\omega t_1) \\ + \sin(\omega t_2) \sin(\omega t_1))  \\ - \hat{p}_0 \hat{x}_0 (\sin(\omega t_2) \sin(\omega t_1)) \\ + \cos(\omega t_2) \cos(\omega t_1))
+\end{multline}
+
+\begin{multline}
+%PREM
+    \cos(\omega t_1) \cos(\omega t_2) +  \sin(\omega t_1)\sin(\omega t_2) \\ = \cos(\omega t_2 - \omega t_1)
+\end{multline}
+
+\begin{multline}
+    \comm{\hat{x}(t_1)}{\hat{p}(t_2)} = \hat{x}_0 \hat{p}_0 \cos(\omega t_2 - \omega t_1) \\ - \hat{p}_0 \hat{x}_0 \cos(\omega t_2 - \omega t_1)
+\end{multline}
+
+\begin{multline}
+    \comm{\hat{x}(t_1)}{\hat{p}(t_2)} = (\hat{x}_0 \hat{p}_0 - \hat{p}_0 \hat{x}_0) \cos(\omega t_2 - \omega t_1)
+\end{multline}
+
+\begin{equation}
+%PREM
+    \hat{x}_0\hat{p}_0 - \hat{p}_0\hat{x}_0 = i\hbar
+\end{equation}
+
+\begin{equation}
+    \comm{\hat{x}(t_1)}{\hat{p}(t_2)} = i \hbar \cos(\omega t_2 - \omega t_1)
+\end{equation}
+
+
+
+
+
+\subsection{Vacuum Rabi Oscillations: excited state probability}
+
+\begin{equation}
+%PREM
+    \ket{\Psi(t)} = \cos(\frac{\Omega t}{2})\ket{e,0} - i\sin(\frac{\Omega t}{2})\ket{g,1}
+\end{equation}
+
+\begin{equation}
+%PREM
+    P_e(t) = |\braket{e,0}{\Psi(t)}|^2
+\end{equation}
+
+\begin{multline}
+    P_e(t) = |\bra{e,0}(\cos(\frac{\Omega t}{2})\ket{e,0} \\ - i\sin(\frac{\Omega t}{2})\ket{g,1})|^2
+\end{multline}
+
+\begin{multline}
+     P_e(t) = |\bra{e,0}\cos(\frac{\Omega t}{2})\ket{e,0} \\ - \bra{e,0}i\sin(\frac{\Omega t}{2})\ket{g,1}|^2
+\end{multline}
+
+\begin{multline}
+    P_e(t) = |\cos(\frac{\Omega t}{2})\braket{e,0}{e,0} \\ - i\sin(\frac{\Omega t}{2})\braket{e,0}{g,1}|^2
+\end{multline}
+
+\begin{equation}
+%PREM
+    \braket{e,0}{e,0} = 1
+\end{equation}
+
+\begin{equation}
+%PREM
+    \braket{e,0}{g,1} = 0
+\end{equation}
+
+\begin{equation}
+    P_e(t) = |\cos(\frac{\Omega t}{2})|^2
+\end{equation}
+
+\begin{equation}
+     P_e(t) = \cos^2(\frac{\Omega t}{2})
+\end{equation}
+
+\subsection{Vacuum Rabi Oscillations: ground state probability}
+
+\begin{equation}
+%PREM
+    \ket{\Psi(t)} = \cos(\frac{\Omega t}{2})\ket{e,0} - i\sin(\frac{\Omega t}{2})\ket{g,1}
+\end{equation}
+
+\begin{equation}
+%PREM
+    P_g(t) = |\braket{g,1}{\Psi(t)}|^2
+\end{equation}
+
+\begin{multline}
+    P_g(t) = |\bra{g,1}(\cos(\frac{\Omega t}{2})\ket{e,0} \\ - i\sin(\frac{\Omega t}{2})\ket{g,1})|^2
+\end{multline}
+
+\begin{multline}
+     P_g(t) = |\bra{g,1}\cos(\frac{\Omega t}{2})\ket{e,0} \\ - \bra{g,1}i\sin(\frac{\Omega t}{2})\ket{g,1}|^2
+\end{multline}
+
+\begin{multline}
+    P_g(t) = |\cos(\frac{\Omega t}{2})\braket{g,1}{e,0} \\ - i\sin(\frac{\Omega t}{2})\braket{g,1}{g,1}|^2
+\end{multline}
+
+\subsection{Vacuum Rabi Oscillations: ground state probability 2}
+
+\begin{multline}
+%PREM
+    P_g(t) = |\cos(\frac{\Omega t}{2})\braket{g,1}{e,0} \\ - i\sin(\frac{\Omega t}{2})\braket{g,1}{g,1}|^2
+\end{multline}
+
+\begin{equation}
+%PREM
+    \braket{g,1}{e,0} = 0
+\end{equation}
+
+\begin{equation}
+%PREM
+    \braket{g,1}{g,1} = 1
+\end{equation}
+
+\begin{equation}
+    P_g(t) = | - i\sin(\frac{\Omega t}{2})|^2
+\end{equation}
+
+\begin{equation}
+    P_g(t) = |- i|^2 |\sin(\frac{\Omega t}{2})|^2
+\end{equation}
+
+\begin{equation}
+%PREM
+    |- i|^2=1
+\end{equation}
+
+\begin{equation}
+    P_g(t) = \sin^2(\frac{\Omega t}{2})
+\end{equation}
+
+\subsection{Expectation value: integral expression}
+
+\begin{equation}
+%PREM
+    \expval{\hat{X}}_{\Psi} = \bra{\Psi}\hat{X}\ket{\Psi}
+\end{equation}
+
+\begin{equation}
+%PREM
+    \hat{X} = \mathbb{I}\hat{X}\mathbb{I}
+\end{equation}
+
+\begin{equation}
+    \expval{\hat{X}}_{\Psi} = \bra{\Psi}\mathbb{I}\hat{X}\mathbb{I}\ket{\Psi}
+\end{equation}
+
+\begin{equation}
+%PREM
+    \mathbb{I} = \int \ket{x}\bra{x}dx
+\end{equation}
+
+\begin{multline}
+     \expval{\hat{X}}_{\Psi} = \bra{\Psi}(\int \ket{x}\bra{x}dx)\hat{X}(\int \ket{x'}\bra{x'}dx')\ket{\Psi}
+\end{multline}
+
+\begin{multline}
+     \expval{\hat{X}}_{\Psi} = \int \int \braket{\Psi}{x}\bra{x}\hat{X}\ket{x'} \\ \braket{x'}{\Psi}dx dx'
+\end{multline}
+
+\subsection{Expectation value: integral expression 2}
+
+\begin{multline}
+%PREM
+     \expval{\hat{X}}_{\Psi} = \int \int \braket{\Psi}{x}\bra{x}\hat{X}\ket{x'} \\ \braket{x'}{\Psi}dx dx'
+\end{multline}
+
+\begin{equation}
+%PREM
+    \hat{X}\ket{x'} = x'\ket{x'}
+\end{equation}
+
+\begin{multline}
+     \expval{\hat{X}}_{\Psi} = \int \int \braket{\Psi}{x}\bra{x}x'\ket{x'} \\ \braket{x'}{\Psi}dx dx'
+\end{multline}
+
+\begin{equation}
+%PREM
+    \braket{\Psi}{x} = \braket{x}{\Psi}^{\dagger}
+\end{equation}
+
+\begin{multline}
+     \expval{\hat{X}}_{\Psi} = \int \int \braket{x}{\Psi}^{\dagger}x'\braket{x}{x'} \\ \braket{x'}{\Psi}dx dx'
+\end{multline}
+
+\begin{equation}
+%PREM
+    \braket{x}{x'} = \delta(x-x')
+\end{equation}
+
+\begin{multline}
+     \expval{\hat{X}}_{\Psi} = \int \int \braket{x}{\Psi}^{\dagger}x'\delta(x-x') \\ \braket{x'}{\Psi}dx dx'
+\end{multline}
+
+\subsection{Expectation value: integral expression 3}
+
+\begin{multline}
+%PREM
+     \expval{\hat{X}}_{\Psi} = \int \int \braket{x}{\Psi}^{\dagger}x'\delta(x-x') \\ \braket{x'}{\Psi}dx dx'
+\end{multline}
+
+\begin{multline}
+%PREM
+     \int \braket{x}{\Psi}^{\dagger}x'\delta(x-x') \braket{x'}{\Psi} dx' \\ = \braket{x}{\Psi}^{\dagger}x \braket{x}{\Psi}
+\end{multline}
+
+\begin{equation}
+    \expval{\hat{X}}_{\Psi} = \int \braket{x}{\Psi}^{\dagger}x\braket{x}{\Psi} dx
+\end{equation}
+
+\begin{equation}
+%PREM
+    \braket{x}{\Psi} = \Psi(x)
+\end{equation}
+
+\begin{equation}
+    \expval{\hat{X}}_{\Psi} = \int \Psi^{\dagger}(x) x \Psi(x) dx
+\end{equation}
+
+\begin{equation}
+%PREM
+    \Psi^{\dagger}(x) \Psi(x) = |\Psi(x)|^2
+\end{equation}
+
+\begin{equation}
+    \expval{\hat{X}}_{\Psi} = \int x |\Psi(x)|^2 dx
+\end{equation}
+
+\subsection{Hellmann–Feynman theorem}
+
+\begin{equation}
+%PREM
+    \hat{H}_\lambda\ket{\Psi_\lambda} = E_\lambda\ket{\Psi_\lambda}
+\end{equation}
+
+\begin{equation}
+   \bra{\Psi_\lambda} \hat{H}_\lambda\ket{\Psi_\lambda} = \bra{\Psi_\lambda} E_\lambda\ket{\Psi_\lambda}
+\end{equation}
+
+\begin{equation}
+    E_\lambda \braket{\Psi_\lambda}{\Psi_\lambda} = \bra{\Psi_\lambda} \hat{H}_\lambda\ket{\Psi_\lambda}
+\end{equation}
+
+\begin{equation}
+%PREM    
+    \braket{\Psi_\lambda}{\Psi_\lambda} = 1
+\end{equation}
+
+\begin{equation}
+     E_\lambda = \bra{\Psi_\lambda} \hat{H}_\lambda\ket{\Psi_\lambda}
+\end{equation}
+
+\begin{equation}
+    \frac{d E_\lambda}{d\lambda} = \frac{d}{d\lambda} \bra{\Psi_\lambda} \hat{H}_\lambda\ket{\Psi_\lambda}
+\end{equation}
+
+\subsection{Hellmann–Feynman theorem 2}
+
+\begin{equation}
+%PREM
+    \frac{d E_\lambda}{d\lambda} = \frac{d}{d\lambda} \bra{\Psi_\lambda} \hat{H}_\lambda\ket{\Psi_\lambda}
+\end{equation}
+
+\begin{multline}
+%PREM
+    \frac{d}{d\lambda} \bra{\Psi_\lambda} \hat{H}_\lambda\ket{\Psi_\lambda} = \bra{\frac{d \Psi_\lambda}{d\lambda}} \hat{H}_\lambda\ket{\Psi_\lambda} \\ + \bra{\Psi_\lambda} \frac{d\hat{H}_\lambda}{d\lambda} \ket{\Psi_\lambda}\\ + \bra{\Psi_\lambda} \hat{H}_\lambda\ket{\frac{d \Psi_\lambda}{d\lambda}}
+\end{multline}
+
+\begin{multline}
+    \frac{d E_\lambda}{d\lambda} = \bra{\frac{d \Psi_\lambda}{d\lambda}} \hat{H}_\lambda\ket{\Psi_\lambda} \\ + \bra{\Psi_\lambda} \frac{d\hat{H}_\lambda}{d\lambda} \ket{\Psi_\lambda}\\ + \bra{\Psi_\lambda} \hat{H}_\lambda\ket{\frac{d \Psi_\lambda}{d\lambda}}
+\end{multline}
+
+\begin{equation}
+%PREM
+    \bra{\Psi_\lambda}\hat{H}_\lambda = \bra{\Psi_\lambda}E_\lambda
+\end{equation}
+
+\begin{equation}
+%PREM
+    \hat{H}_\lambda\ket{\Psi_\lambda} = E_\lambda\ket{\Psi_\lambda}
+\end{equation}
+
+\begin{multline}
+    \frac{d E_\lambda}{d\lambda} = E_\lambda \bra{\frac{d \Psi_\lambda}{d\lambda}}\ket{\Psi_\lambda} + \bra{\Psi_\lambda} \frac{d\hat{H}_\lambda}{d\lambda} \ket{\Psi_\lambda} \\ +  E_\lambda \bra{\Psi_\lambda}\ket{\frac{d \Psi_\lambda}{d\lambda}}
+\end{multline}
+
+\subsection{Hellmann–Feynman theorem 3}
+
+\begin{multline}
+%PREM
+    \frac{d E_\lambda}{d\lambda} = E_\lambda \bra{\frac{d \Psi_\lambda}{d\lambda}}\ket{\Psi_\lambda} + \bra{\Psi_\lambda} \frac{d\hat{H}_\lambda}{d\lambda} \ket{\Psi_\lambda} \\ +  E_\lambda \bra{\Psi_\lambda}\ket{\frac{d \Psi_\lambda}{d\lambda}}
+\end{multline}
+
+\begin{multline}
+    \frac{d E_\lambda}{d\lambda} = E_\lambda (\bra{\frac{d \Psi_\lambda}{d\lambda}}\ket{\Psi_\lambda} + \bra{\Psi_\lambda}\ket{\frac{d \Psi_\lambda}{d\lambda}}) \\ + \bra{\Psi_\lambda} \frac{d\hat{H}_\lambda}{d\lambda} \ket{\Psi_\lambda}
+\end{multline}
+
+\begin{equation}
+%PREM
+    \bra{\frac{d \Psi_\lambda}{d\lambda}}\ket{\Psi_\lambda} + \bra{\Psi_\lambda}\ket{\frac{d \Psi_\lambda}{d\lambda}} = \frac{d}{d\lambda} \braket{\Psi_\lambda}{\Psi_\lambda}
+\end{equation}
+
+\begin{equation}
+    \frac{d E_\lambda}{d\lambda} = E_\lambda \frac{d}{d\lambda} \braket{\Psi_\lambda}{\Psi_\lambda} + \bra{\Psi_\lambda} \frac{d\hat{H}_\lambda}{d\lambda} \ket{\Psi_\lambda}
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{d}{d\lambda} \braket{\Psi_\lambda}{\Psi_\lambda} = 0
+\end{equation}
+
+\begin{equation}
+    \frac{d E_\lambda}{d\lambda} = \bra{\Psi_\lambda} \frac{d\hat{H}_\lambda}{d\lambda} \ket{\Psi_\lambda}
+\end{equation}
+
+
+
+
+
+\subsection{Hellmann–Feynman theorem: time-dependent wavefunctions}
+
+\begin{multline}
+%PREM
+    \frac{\partial}{\partial \lambda} \bra{\Psi_\lambda(t)} \hat{H}_\lambda \ket{\Psi_\lambda(t)} = \bra{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}} \hat{H}_\lambda \ket{\Psi_\lambda(t)} \\ + \bra{\Psi_\lambda(t)} \frac{\partial \hat{H}_\lambda}{\partial \lambda} \ket{\Psi_\lambda(t)}  \\ + \bra{\Psi_\lambda(t)} \hat{H}_\lambda \ket{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}}
+\end{multline}
+
+\begin{multline}
+    \bra{\Psi_\lambda(t)} \frac{\partial \hat{H}_\lambda}{\partial \lambda} \ket{\Psi_\lambda(t)} = \frac{\partial}{\partial \lambda} \bra{\Psi_\lambda(t)} \hat{H}_\lambda \ket{\Psi_\lambda(t)} \\ - \bra{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}} \hat{H}_\lambda \ket{\Psi_\lambda(t)} \\ - \bra{\Psi_\lambda(t)} \hat{H}_\lambda \ket{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}}
+\end{multline}
+
+\begin{equation}
+%PREM
+    i \hbar \ket{\frac{\partial \Psi_\lambda(t)}{\partial t}} = \hat{H}_\lambda \ket{\Psi_\lambda(t)}
+\end{equation}
+
+\begin{equation}
+%PREM
+    - i \hbar \bra{\frac{\partial \Psi_\lambda(t)}{\partial t}} = \bra{\Psi_\lambda(t)} \hat{H}_\lambda 
+\end{equation}
+
+\begin{multline}
+    \bra{\Psi_\lambda(t)} \frac{\partial \hat{H}_\lambda}{\partial \lambda} \ket{\Psi_\lambda(t)} =  \frac{\partial}{\partial \lambda}  \bra{\Psi_\lambda(t)} i\hbar \ket{\frac{\partial \Psi_\lambda(t)}{\partial t}} \\ - \bra{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}} i\hbar \ket{\frac{\partial \Psi_\lambda(t)}{\partial t}} \\ - (-i\hbar) \bra{\frac{\partial \Psi_\lambda(t)}{\partial t}} \ket{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}} 
+\end{multline}
+
+\begin{multline}
+    \bra{\Psi_\lambda(t)} \frac{\partial \hat{H}_\lambda}{\partial \lambda} \ket{\Psi_\lambda(t)} =  i\hbar \frac{\partial}{\partial \lambda}  \bra{\Psi_\lambda(t)} \ket{\frac{\partial \Psi_\lambda(t)}{\partial t}} \\ - i\hbar\bra{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}}  \ket{\frac{\partial \Psi_\lambda(t)}{\partial t}} \\ + i\hbar \bra{\frac{\partial \Psi_\lambda(t)}{\partial t}} \ket{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}} 
+\end{multline}
+
+\subsection{Hellmann–Feynman theorem: time-dependent wavefunctions 2}
+
+\begin{multline}
+%PREM
+    \bra{\Psi_\lambda(t)} \frac{\partial \hat{H}_\lambda}{\partial \lambda} \ket{\Psi_\lambda(t)} =  i\hbar \frac{\partial}{\partial \lambda}  \bra{\Psi_\lambda(t)} \ket{\frac{\partial \Psi_\lambda(t)}{\partial t}} \\ - i\hbar\bra{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}}  \ket{\frac{\partial \Psi_\lambda(t)}{\partial t}} \\ + i\hbar \bra{\frac{\partial \Psi_\lambda(t)}{\partial t}} \ket{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}} 
+\end{multline}
+
+\begin{multline}
+%PREM \\
+    \frac{\partial}{\partial \lambda}  \bra{\Psi_\lambda(t)} \ket{\frac{\partial \Psi_\lambda(t)}{\partial t}} = \bra{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}} \ket{\frac{\partial \Psi_\lambda(t)}{\partial t}} \\ + \bra{\Psi_\lambda(t)} \ket{\frac{\partial^2 \Psi_\lambda(t)}{\partial \lambda \partial t}} 
+\end{multline}
+
+\begin{multline}
+    \bra{\Psi_\lambda(t)} \frac{\partial \hat{H}_\lambda}{\partial \lambda} \ket{\Psi_\lambda(t)} =  i\hbar (\bra{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}} \ket{\frac{\partial \Psi_\lambda(t)}{\partial t}} \\ + \bra{\Psi_\lambda(t)} \ket{\frac{\partial^2 \Psi_\lambda(t)}{\partial \lambda \partial t}} ) \\- i\hbar \bra{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}} \ket{\frac{\partial \Psi_\lambda(t)}{\partial t}} \\ + i\hbar \bra{\frac{\partial \Psi_\lambda(t)}{\partial t}} \ket{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}}
+\end{multline}
+
+\begin{multline}
+    \bra{\Psi_\lambda(t)} \frac{\partial \hat{H}_\lambda}{\partial \lambda} \ket{\Psi_\lambda(t)} = i\hbar \bra{\Psi_\lambda(t)} \ket{\frac{\partial^2 \Psi_\lambda(t)}{\partial \lambda \partial t}} \\ + i\hbar \bra{\frac{\partial \Psi_\lambda(t)}{\partial t}} \ket{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}}
+\end{multline}
+
+\begin{equation}
+    \bra{\Psi_\lambda(t)} \frac{\partial \hat{H}_\lambda}{\partial \lambda} \ket{\Psi_\lambda(t)} = i\hbar \frac{\partial}{\partial t} \bra{\Psi_\lambda(t)} \ket{\frac{\partial \Psi_\lambda(t)}{\partial \lambda}}
+\end{equation}
+
+
+
+
+\section{Other}
+
+\subsection{Euler-lagrange equation: Full derivative of the perturbation Lagrangian with respect to $\varepsilon$}
+
+\begin{equation}
+%PREM
+    g_{\varepsilon}(x) = f(x) + \varepsilon\eta(x)
+\end{equation}
+
+\begin{equation}
+    \frac{dg_{\varepsilon}}{d\varepsilon} = \frac{d}{d\varepsilon}(f(x) + \varepsilon\eta(x))
+\end{equation}
+
+\begin{equation}
+    \frac{dg_{\varepsilon}}{d\varepsilon} = \frac{df(x)}{d\varepsilon} + \frac{d}{d\varepsilon}(\varepsilon\eta(x))
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{df(x)}{d\varepsilon} = 0
+\end{equation}
+
+\begin{equation}
+    \frac{dg_{\varepsilon}}{d\varepsilon} = \frac{d}{d\varepsilon}(\varepsilon\eta(x))
+\end{equation}
+
+\subsection{Euler-lagrange equation: Full derivative of the perturbation Lagrangian with respect to $\varepsilon$ 2}
+
+\begin{equation}
+%PREM
+    \frac{dg_{\varepsilon}}{d\varepsilon} = \frac{d}{d\varepsilon}(\varepsilon\eta(x))
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{d}{d\varepsilon}(\varepsilon\eta(x)) = \eta(x) + \varepsilon\frac{d\eta(x)}{d\varepsilon}
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{d\eta(x)}{d\varepsilon} = 0
+\end{equation}
+
+\begin{equation}
+    \frac{d}{d\varepsilon}(\varepsilon\eta(x)) = \eta(x)
+\end{equation}
+
+\begin{equation}
+    \frac{dg_{\varepsilon}}{d\varepsilon} = \eta(x)
+\end{equation}
+
+\subsection{Euler-lagrange equation: Full derivative of the perturbation Lagrangian with respect to $\varepsilon$ 3}
+
+\begin{equation}
+%PREM
+    L_{\varepsilon} = L(x, g_{\varepsilon}(x), g_{\varepsilon}'(x))
+\end{equation}
+
+\begin{equation}
+%PREM
+    dL_{\varepsilon} = \frac{\partial L_{\varepsilon}}{\partial x}dx + \frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}}dg_{\varepsilon} + \frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}'}dg_{\varepsilon}'
+\end{equation}
+
+\begin{equation}
+    \frac{dL_{\varepsilon}}{d\varepsilon} = \frac{\partial L_{\varepsilon}}{\partial x}\frac{dx}{d\varepsilon} + \frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}}\frac{dg_{\varepsilon}}{d\varepsilon} + \frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}'}\frac{dg_{\varepsilon}'}{d\varepsilon}
+\end{equation}
+
+\begin{equation}
+    \frac{dL_{\varepsilon}}{d\varepsilon} = \frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}}\frac{dg_{\varepsilon}}{d\varepsilon} + \frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}'}\frac{dg_{\varepsilon}'}{d\varepsilon}
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{dg_{\varepsilon}}{d\varepsilon} = \eta(x)
+\end{equation}
+
+\begin{equation}
+    \frac{dL_{\varepsilon}}{d\varepsilon} = \frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}}\eta(x) + \frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}'}\frac{dg_{\varepsilon}'}{d\varepsilon}
+\end{equation}
+
+\subsection{Euler-lagrange equation: Full derivative of the perturbation Lagrangian with respect to $\varepsilon$ 4}
+
+\begin{equation}
+%PREM
+    \frac{dg_{\varepsilon}}{d\varepsilon} = \eta(x)
+\end{equation}
+
+\begin{equation}
+    \frac{d}{dx}\frac{dg_{\varepsilon}}{d\varepsilon} = \frac{d}{dx}\eta(x)
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{d}{dx}\frac{dg_{\varepsilon}}{d\varepsilon} = \frac{dg_{\varepsilon}'}{d\varepsilon}
+\end{equation}
+
+\begin{equation}
+    \frac{dg_{\varepsilon}'}{d\varepsilon} = \frac{d}{dx}\eta(x)
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{d}{dx}\eta(x) = \eta '(x)
+\end{equation}
+
+\begin{equation}
+    \frac{dg_{\varepsilon}'}{d\varepsilon} = \eta '(x)
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{dL_{\varepsilon}}{d\varepsilon} = \frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}}\eta(x) + \frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}'}\frac{dg_{\varepsilon}'}{d\varepsilon}
+\end{equation}
+
+\begin{equation}
+    \frac{dL_{\varepsilon}}{d\varepsilon} = \frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}}\eta(x) + \frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}'} \eta '(x)
+\end{equation}
+
+
+
+\subsection{Euler-Lagrange equation: Derivation}
+
+\begin{equation}
+%PREM
+    J = \int_{a}^{b}L(x, f(x), f'(x))
+\end{equation}
+
+\begin{equation}
+%PREM
+    g_{\varepsilon}(x) = f(x) + \varepsilon\eta(x)
+\end{equation}
+
+\begin{equation}
+%PREM
+    J_{\varepsilon} = \int_{a}^{b}L(x, g_{\varepsilon}(x), g_{\varepsilon}'(x))dx
+\end{equation}
+
+\begin{equation}
+%PREM
+    L_{\varepsilon} = L(x, g_{\varepsilon}(x), g_{\varepsilon}'(x))
+\end{equation}
+
+\begin{equation}
+    J_{\varepsilon} = \int_{a}^{b}L_{\varepsilon}dx
+\end{equation}
+
+\begin{equation}
+    \frac{dJ_{\varepsilon}}{d\varepsilon} = \frac{d}{d\varepsilon}\int_{a}^{b}L_{\varepsilon}dx
+\end{equation}
+
+\begin{equation}
+    \frac{dJ_{\varepsilon}}{d\varepsilon} = \int_{a}^{b}\frac{dL_{\varepsilon}}{d\varepsilon}dx
+\end{equation}
+
+\subsection{Euler-Lagrange equation: Derivation 2}
+
+\begin{equation}
+%PREM
+    \frac{dJ_{\varepsilon}}{d\varepsilon} = \int_{a}^{b}\frac{dL_{\varepsilon}}{d\varepsilon}dx
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{dL_{\varepsilon}}{d\varepsilon} = \frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}}\eta(x) + \frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}'} \eta '(x)
+\end{equation}
+
+\begin{equation}
+    \frac{dJ_{\varepsilon}}{d\varepsilon} = \int_{a}^{b}(\frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}}\eta(x) + \frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}'} \eta '(x))dx
+\end{equation}
+
+\begin{equation}
+    \frac{dJ_{\varepsilon}}{d\varepsilon} = \int_{a}^{b}\frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}}\eta(x)dx + \int_{a}^{b}\frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}'} \eta '(x)dx
+\end{equation}
+
+\begin{equation}
+    \eval{\frac{dJ_{\varepsilon}}{d\varepsilon}}_{\varepsilon = 0} = \eval{(\int_{a}^{b}\frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}}\eta(x)dx + \int_{a}^{b}\frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}'} \eta '(x)dx)}_{\varepsilon = 0}
+\end{equation}
+
+\begin{equation}
+    \eval{\frac{dJ_{\varepsilon}}{d\varepsilon}}_{\varepsilon = 0} = \eval{(\int_{a}^{b}\frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}}\eta(x)dx)}_{\varepsilon = 0} + \eval{(\int_{a}^{b}\frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}'} \eta '(x)dx)}_{\varepsilon = 0}
+\end{equation}
+
+\subsection{Euler-Lagrange equation: Derivation 3}
+
+\begin{equation}
+%PREM
+    L = L(x, f(x), f'(x))
+\end{equation}
+
+\begin{equation}
+%PREM
+    g_{\varepsilon}(x) = f(x) + \varepsilon\eta(x)
+\end{equation}
+
+\begin{equation}
+%PREM
+    L_{\varepsilon} = L(x, g_{\varepsilon}(x), g_{\varepsilon}'(x))
+\end{equation}
+
+\begin{equation}
+%PREM
+    \eval{\frac{dJ_{\varepsilon}}{d\varepsilon}}_{\varepsilon = 0} = \eval{(\int_{a}^{b}\frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}}\eta(x)dx)}_{\varepsilon = 0} + \eval{(\int_{a}^{b}\frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}'} \eta '(x)dx)}_{\varepsilon = 0}
+\end{equation}
+
+\begin{equation}
+    \eval{(\int_{a}^{b}\frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}}\eta(x)dx)}_{\varepsilon = 0} = \int_{a}^{b}\frac{\partial L}{\partial f}\eta(x)dx
+\end{equation}
+
+\begin{equation}
+    \eval{(\int_{a}^{b}\frac{\partial L_{\varepsilon}}{\partial g_{\varepsilon}'}\eta'(x)dx)}_{\varepsilon = 0} = \int_{a}^{b}\frac{\partial L}{\partial f'}\eta'(x)dx
+\end{equation}
+
+\begin{equation}
+    \eval{\frac{dJ_{\varepsilon}}{d\varepsilon}}_{\varepsilon = 0} = \int_{a}^{b}\frac{\partial L}{\partial f}\eta(x)dx + \int_{a}^{b}\frac{\partial L}{\partial f'}\eta'(x)dx
+\end{equation}
+
+\subsection{Euler-Lagrange equation: Derivation 4}
+
+\begin{equation}
+%PREM
+    \frac{dv}{dx} = \eta'(x)
+\end{equation}
+
+\begin{equation}
+%PREM
+    v = \int\frac{dv}{dx}dx 
+\end{equation}
+
+\begin{equation}
+    v = \int\eta'(x)dx 
+\end{equation}
+
+\begin{equation}
+%PREM
+    \eta'(x) = \frac{d\eta(x)}{dx}
+\end{equation}
+
+\begin{equation}
+    v = \int\frac{d\eta(x)}{dx}dx 
+\end{equation}
+
+\begin{equation}
+    v = \eta(x)
+\end{equation}
+
+\subsection{Euler-Lagrange equation: Derivation 5}
+
+\begin{equation}
+%PREM
+    u = \frac{\partial L}{\partial f'}
+\end{equation}
+
+\begin{equation}
+%PREM
+    v = \eta(x)
+\end{equation}
+
+\begin{equation}
+   uv = \frac{\partial L}{\partial f'}\eta(x)
+\end{equation}
+
+\begin{equation}
+   \eval{(uv)}_a^b = \eval{(\frac{\partial L}{\partial f'}\eta(x))}_a^b
+\end{equation}
+
+\begin{equation}
+   \eval{(uv)}_a^b = \frac{\partial L}{\partial f'}\eta(b) - \frac{\partial L}{\partial f'}\eta(a)
+\end{equation}
+
+\begin{equation}
+%PREM
+   \eta(a) = 0 
+\end{equation}
+
+\begin{equation}
+%PREM
+   \eta(b) = 0 
+\end{equation}
+
+\begin{equation}
+   \eval{(uv)}_a^b = 0
+\end{equation}
+
+\subsection{Euler-Lagrange equation: Derivation 6}
+
+\begin{equation}
+%PREM
+    I = \int_{a}^{b}\frac{\partial L}{\partial f'}\eta'(x)dx
+\end{equation}
+
+\begin{equation}
+%PREM
+    I = \eval{(uv)}_a^b - \int_a^bv\frac{du}{dx}dx
+\end{equation}
+
+\begin{equation}
+%PREM
+   \eval{(uv)}_a^b = 0
+\end{equation}
+
+\begin{equation}
+    I = - \int_a^bv\frac{du}{dx}dx
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{du}{dx} = \frac{d}{dx}\frac{\partial L}{\partial f'}
+\end{equation}
+
+\begin{equation}
+    v = \eta(x)
+\end{equation}
+
+\begin{equation}
+    I = - \int_a^b\eta(x)\frac{d}{dx}\frac{\partial L}{\partial f'}dx
+\end{equation}
+
+\subsection{Euler-Lagrange equation: Derivation 7}
+
+\begin{equation}
+%PREM
+    \eval{\frac{dJ_{\varepsilon}}{d\varepsilon}}_{\varepsilon = 0} = \int_{a}^{b}\frac{\partial L}{\partial f}\eta(x)dx + \int_{a}^{b}\frac{\partial L}{\partial f'}\eta'(x)dx
+\end{equation}
+
+\begin{equation}
+%PREM
+    \int_{a}^{b}\frac{\partial L}{\partial f'}\eta'(x)dx = - \int_a^b\eta(x)\frac{d}{dx}\frac{\partial L}{\partial f'}dx
+\end{equation}
+
+\begin{equation}
+    \eval{\frac{dJ_{\varepsilon}}{d\varepsilon}}_{\varepsilon = 0} = \int_{a}^{b}\frac{\partial L}{\partial f}\eta(x)dx - \int_a^b\eta(x)\frac{d}{dx}\frac{\partial L}{\partial f'}dx
+\end{equation}
+
+\begin{equation}
+    \eval{\frac{dJ_{\varepsilon}}{d\varepsilon}}_{\varepsilon = 0} = \int_{a}^{b}\eta(x)(\frac{\partial L}{\partial f} - \frac{d}{dx}\frac{\partial L}{\partial f'})dx
+\end{equation}
+
+\begin{equation}
+%PREM
+    \eval{\frac{dJ_{\varepsilon}}{d\varepsilon}}_{\varepsilon = 0} = 0
+\end{equation}
+
+\begin{equation}
+    \int_{a}^{b}\eta(x)(\frac{\partial L}{\partial f} - \frac{d}{dx}\frac{\partial L}{\partial f'})dx = 0
+\end{equation}
+
+\begin{equation}
+    \frac{\partial L}{\partial f} - \frac{d}{dx}\frac{\partial L}{\partial f'} = 0
+\end{equation}
+
+\subsection{Euler-Lagrange equation: Straight line}
+
+\begin{equation}
+%PREM
+    S = \int_a^bds
+\end{equation}
+
+\begin{equation}
+%PREM
+    ds = \sqrt{dx^2 + dy^2}
+\end{equation}
+
+\begin{equation}
+    ds = \sqrt{dx^2 + (\frac{dy}{dx})^2dx^2}
+\end{equation}
+
+\begin{equation}
+    ds = \sqrt{(1 + (\frac{dy}{dx})^2)dx^2}
+\end{equation}
+
+\begin{equation}
+    ds = \sqrt{(1 + (\frac{dy}{dx})^2)}dx
+\end{equation}
+
+\begin{equation}
+%PREM
+    y' = \frac{dy}{dx}
+\end{equation}
+
+\begin{equation}
+    ds = \sqrt{(1 + y'^2)}dx
+\end{equation}
+
+\begin{equation}
+    \int ds = \int \sqrt{(1 + y'^2)}dx
+\end{equation}
+
+\begin{equation}
+    S = \int_a^b\sqrt{(1 + y'^2)}dx
+\end{equation}
+
+\subsection{Euler-Lagrange equation: Straight line 2}
+
+\begin{equation}
+%PREM
+    L = (1 + y'^2)^\frac{1}{2}
+\end{equation}
+
+\begin{equation}
+%PREM
+    u = 1 + y'^2
+\end{equation}
+
+\begin{equation}
+    \frac{du}{dy'} = 2y'
+\end{equation}
+
+\begin{equation}
+    L = u^\frac{1}{2}
+\end{equation}
+
+\begin{equation}
+    \frac{dL}{du} = \frac{1}{2}u^{-\frac{1}{2}}
+\end{equation}
+
+\begin{equation}
+    \frac{dL}{dy'} = \frac{dL}{du}\frac{du}{dy'}
+\end{equation}
+
+\begin{equation}
+    \frac{dL}{dy'} = (\frac{1}{2}u^{-\frac{1}{2}})(2y')
+\end{equation}
+
+\begin{equation}
+    \frac{dL}{dy'} = y'u^{-\frac{1}{2}}
+\end{equation}
+
+\begin{equation}
+    \frac{dL}{dy'} = y'(1 + y'^2)^{-\frac{1}{2}}
+\end{equation}
+
+\subsection{Euler-Lagrange equation: Straight line 3}
+
+\begin{equation}
+%PREM
+    \frac{dL}{dy} - \frac{d}{dx}\frac{dL}{dy'} = 0
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{dL}{dy} = 0
+\end{equation}
+
+\begin{equation}
+    \frac{d}{dx}\frac{dL}{dy'} = 0
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{dL}{dy'} = y'(1 + y'^2)^{-\frac{1}{2}}
+\end{equation}
+
+\begin{equation}
+    \frac{d}{dx}(y'(1 + y'^2)^{-\frac{1}{2}}) = 0
+\end{equation}
+
+\begin{equation}
+    \int\frac{d}{dx}(y'(1 + y'^2)^{-\frac{1}{2}})dx = C
+\end{equation}
+
+\subsection{Euler-Lagrange equation: Straight line 4}
+
+\begin{equation}
+%PREM
+    \int\frac{d}{dx}(y'(1 + y'^2)^{-\frac{1}{2}})dx = C
+\end{equation}
+
+\begin{equation}
+    \int\frac{d}{dx}(y'(1 + y'^2)^{-\frac{1}{2}})dx = y'(1 + y'^2)^{-\frac{1}{2}}
+\end{equation}
+
+\begin{equation}
+    y'(1 + y'^2)^{-\frac{1}{2}} = C
+\end{equation}
+
+\begin{equation}
+    y'^2(1 + y'^2)^{-1} = C^2
+\end{equation}
+
+\begin{equation}
+    y'^2 = C^2(1 + y'^2)
+\end{equation}
+
+\subsection{Euler-Lagrange equation: Straight line 5}
+
+\begin{equation}
+%PREM
+    y'^2 = C^2(1 + y'^2)
+\end{equation}
+
+\begin{equation}
+    y'^2 = C^2y'^2 + C^2
+\end{equation}
+
+\begin{equation}
+    y'^2 - C^2y'^2 = C^2
+\end{equation}
+
+\begin{equation}
+    y'^2(1 - C^2) = C^2
+\end{equation}
+
+\begin{equation}
+    y'^2 = C^2(1 - C^2)^{-1}
+\end{equation}
+
+\begin{equation}
+    y' = C(1 - C^2)^{-1/2}
+\end{equation}
+
+\subsection{Euler-Lagrange equation: Straight line 6}
+
+\begin{equation}
+%PREM
+    \frac{dy}{dx} = C(1 - C^2)^{-1/2}
+\end{equation}
+
+\begin{equation}
+%PREM
+    C(1 - C^2)^{-1/2} = A
+\end{equation}
+
+\begin{equation}
+    \frac{dy}{dx} = A
+\end{equation}
+
+\begin{equation}
+    \int\frac{dy}{dx}dx = \int Adx
+\end{equation}
+
+\begin{equation}
+%PREM
+   \int \frac{dy}{dx}dx = Ax + C
+\end{equation}
+
+\begin{equation}
+    y = Ax + C
+\end{equation}
+
+\subsection{Escape velocity}
+
+\begin{equation}
+%PREM
+    F = \frac{GMm}{r^2}
+\end{equation}
+
+\begin{equation}
+%PREM
+    dW = Fdr
+\end{equation}
+
+\begin{equation}
+    dW = \frac{GMm}{r^2} dr
+\end{equation}
+
+\begin{equation}
+    \int_{r_0}^{\infty} dW = \int_{r_0}^{\infty} \frac{GMm}{r^2} dr
+\end{equation}
+
+\begin{equation}
+%PREM
+    W = \int_{r_0}^{\infty} dW
+\end{equation}
+
+\begin{equation}
+    W = \int_{r_0}^{\infty} \frac{GMm}{r^2} dr
+\end{equation}
+
+\subsection{Escape velocity 2}
+
+\begin{equation}
+%PREM
+    W = \int_{r_0}^{\infty} \frac{GMm}{r^2} dr
+\end{equation}
+
+\begin{equation}
+    \int_{r_0}^{\infty} \frac{GMm}{r^2} dr = GMm ((-\frac{1}{\infty}) - (-\frac{1}{r_0}))
+\end{equation}
+
+\begin{equation}
+    \int_{r_0}^{\infty} \frac{GMm}{r^2} dr = \frac{GMm}{r_0}
+\end{equation}
+
+\begin{equation}
+    W = \frac{GMm}{r_0}
+\end{equation}
+
+\begin{equation}
+%PREM
+    F = \frac{GMm}{r^2}
+\end{equation}
+
+\begin{equation}
+%PREM
+    F=mg
+\end{equation}
+
+\begin{equation}
+    \frac{GMm}{r_0^2} = mg
+\end{equation}
+
+\begin{equation}
+    GM = gr_0^2
+\end{equation}
+
+\begin{equation}
+    W = mgr_0
+\end{equation}
+
+\subsection{Escape velocity 3}
+
+\begin{equation}
+%PREM
+    W = mgr_0
+\end{equation}
+
+\begin{equation}
+%PREM
+    E = \frac{1}{2}mv_{esc}^2
+\end{equation}
+
+\begin{equation}
+%PREM
+    W = E
+\end{equation}
+
+\begin{equation}
+    \frac{1}{2}mv_{esc}^2 = mgr_0
+\end{equation}
+
+\begin{equation}
+    v_{esc}^2 = 2gr_0
+\end{equation}
+
+\begin{equation}
+    v_{esc} = \sqrt{2gr_0}
+\end{equation}
+
+\subsection{Terminal velocity}
+
+\begin{equation}
+%PREM
+    F = mg - \frac{1}{2}\rho v_F^2 A C_d
+\end{equation}
+
+\begin{equation}
+%PREM
+    F = 0
+\end{equation}
+
+\begin{equation}
+    mg - \frac{1}{2}\rho v_0^2 A C_d = 0
+\end{equation}
+
+\begin{equation}
+    mg = \frac{1}{2}\rho v_0^2 A C_d
+\end{equation}
+
+\begin{equation}
+    \frac{2mg}{\rho C_d A} = v_0^2
+\end{equation}
+
+\begin{equation}
+    v_0 = \sqrt{\frac{2mg}{\rho C_d A}}
+\end{equation}
+
+\subsection{Snell's law: from Fermat's principle}
+
+\begin{equation}
+%PREM
+    T = \frac{(x^2 + a^2)^\frac{1}{2}}{v_1} + \frac{(b^2 + (l-x)^2)^\frac{1}{2}}{v_2}
+\end{equation}
+
+\begin{equation}
+    T = \frac{(x^2 + a^2)^\frac{1}{2}}{v_1} + \frac{(b^2 + l^2 -2lx + x^2)^\frac{1}{2}}{v_2}
+\end{equation}
+
+\begin{equation}
+    \frac{dT}{dx} = \frac{d}{dx} ( \frac{(x^2 + a^2)^\frac{1}{2}}{v_1} + \frac{(b^2 + l^2 -2lx + x^2)^\frac{1}{2}}{v_2})
+\end{equation}
+
+\begin{equation}
+    \frac{dT}{dx} = \frac{d}{dx} ( \frac{(x^2 + a^2)^\frac{1}{2}}{v_1}) + \frac{d}{dx} (\frac{(b^2 + l^2 -2lx + x^2)^\frac{1}{2}}{v_2})
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{d}{dx} ( \frac{(x^2 + a^2)^\frac{1}{2}}{v_1}) = \frac{x}{v_1 (x^2 + a^2)^\frac{1}{2}}
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{d}{dx} (\frac{(b^2 + l^2 -2lx + x^2)^\frac{1}{2}}{v_2}) = \frac{x-l}{v_2  ((x-l)^2 + b^2)^\frac{1}{2} }
+\end{equation}
+
+\begin{equation}
+    \frac{dT}{dx} = \frac{x}{v_1 (x^2 + a^2)^\frac{1}{2}} + \frac{x-l}{v_2  ((x-l)^2 + b^2)^\frac{1}{2} }
+\end{equation}
+
+\subsection{Snell's law: from Fermat's principle 2}
+
+\begin{equation}
+%PREM
+    \frac{dT}{dx} = \frac{x}{v_1 (x^2 + a^2)^\frac{1}{2}} + \frac{x-l}{v_2  ((x-l)^2 + b^2)^\frac{1}{2} }
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{x}{(x^2 + a^2)^\frac{1}{2}} = \sin \theta_1
+\end{equation}
+
+\begin{equation}
+    \frac{dT}{dx} = \frac{\sin \theta_1}{v_1} + \frac{x-l}{v_2  ((x-l)^2 + b^2)^\frac{1}{2} }
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{l-x}{((x-l)^2 + b^2)^\frac{1}{2} } = \sin \theta_2
+\end{equation}
+
+\begin{equation}
+    \frac{dT}{dx} = \frac{\sin \theta_1}{v_1} - \frac{\sin \theta_2}{v_2}
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{dT}{dx} = 0
+\end{equation}
+
+\begin{equation}
+    \frac{\sin \theta_1}{v_1} - \frac{\sin \theta_2}{v_2} = 0
+\end{equation}
+
+\subsection{Snell's law: from Fermat's principle 3}
+
+\begin{equation}
+%PREM
+    \frac{\sin \theta_1}{v_1} - \frac{\sin \theta_2}{v_2} = 0
+\end{equation}
+
+\begin{equation}
+    \frac{\sin \theta_1}{v_1} = \frac{\sin \theta_2}{v_2}
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{1}{v_1} = \frac{n_1}{c}
+\end{equation}
+
+\begin{equation}
+%PREM    
+    \frac{1}{v_2} = \frac{n_2}{c}
+\end{equation}
+
+\begin{equation}
+    \frac{n_1}{c} \sin \theta_1 = \frac{n_2}{c} \sin \theta_2
+\end{equation}
+
+\begin{equation}
+    n_1 \sin \theta_1 = n_2 \sin \theta_2
+\end{equation}
+
+\subsection{Maxwell-Boltzmann: energy distribution}
+
+\begin{equation}
+%PREM
+    E = \frac{|\mathbf{p}|^2}{2m}
+\end{equation}
+
+\begin{equation}
+    |\mathbf{p}| = (2mE)^{\frac{1}{2}}
+\end{equation}
+
+\begin{equation}
+     \frac{d|\mathbf{p}|}{dE} = \frac{1}{2} (2m)^{\frac{1}{2}} E^{-\frac{3}{2}}
+\end{equation}
+
+\begin{equation}
+    d|\mathbf{p}| = \frac{1}{2} (2m)^{\frac{1}{2}} E^{-\frac{3}{2}} dE
+\end{equation}
+
+\begin{equation}
+    |\mathbf{p}|^2 = 2mE
+\end{equation}
+
+\begin{equation}
+    |\mathbf{p}|^2 d|\mathbf{p}| = ((2mE)^{\frac{1}{2}})^2 \frac{1}{2} (2m)^{\frac{1}{2}} E^{-\frac{3}{2}} dE
+\end{equation}
+
+\begin{equation}
+    |\mathbf{p}|^2 d|\mathbf{p}| = m (2mE)^{\frac{1}{2}} dE
+\end{equation}
+
+\subsection{Maxwell-Boltzmann: energy distribution 2}
+
+\begin{equation}
+%PREM
+    |\mathbf{p}|^2 d|\mathbf{p}| = m (2mE)^{\frac{1}{2}} dE
+\end{equation}
+
+\begin{equation}
+%PREM
+    d^3\mathbf{p} = 4 \pi |\mathbf{p}|^2 d|\mathbf{p}|
+\end{equation}
+
+\begin{equation}
+    d^3\mathbf{p} = 4\pi m (2mE)^  {\frac{1}{2}} dE
+\end{equation}
+
+\begin{equation}
+%PREM
+    f_{\mathbf{p}}(\mathbf{p}) = (2\pi mkT)^{-\frac{3}{2}} e^{-\frac{\mathbf{p}^2}{2mkT}}
+\end{equation}
+
+\begin{equation}
+    f_{\mathbf{p}}(\mathbf{p}) d^3\mathbf{p} = (2\pi mkT)^{-\frac{3}{2}} e^{-\frac{\mathbf{p}^2}{2mkT}} d^3\mathbf{p}
+\end{equation}
+
+\begin{equation}
+    f_\mathbf{p}(\mathbf{p}) d^3\mathbf{p} = (2\pi mkT)^{-\frac{3}{2}} e^{-\frac{\mathbf{p}^2}{2mkT}} 4\pi m (2mE)^{\frac{1}{2}} dE
+\end{equation}
+
+\begin{equation}
+%PREM
+    f_E(E)dE = f_{\mathbf{p}}(\mathbf{p})d^3\mathbf{p}
+\end{equation}
+
+\begin{equation}
+    f_E(E)dE = (2\pi mkT)^{-\frac{3}{2}} e^{-\frac{\mathbf{p}^2}{2mkT}} 4\pi m (2mE)^{\frac{1}{2}} dE
+\end{equation}
+
+\begin{equation}
+    f_E(E) = 2 (\frac{E}{\pi})^{\frac{1}{2}} (\frac{1}{kT})^{\frac{3}{2}} e^{-(\frac{E}{kT})}
+\end{equation}
+
+\subsection{Maxwell-Boltzmann: velocity vector distribution}
+
+\begin{equation}
+%PREM
+    f_\mathbf{v}(\mathbf{v}) d^3 \mathbf{v} = f_\mathbf{p}(\mathbf{p})(\frac{d\mathbf{p}}{d\mathbf{v}})^3 d^3 \mathbf{v}
+\end{equation}
+
+\begin{equation}
+%PREM
+    \mathbf{p} = m \mathbf{v}
+\end{equation}
+
+\begin{equation}
+    \frac{d\mathbf{p}}{d\mathbf{v}} = m
+\end{equation}
+
+\begin{equation}
+    f_\mathbf{v}(\mathbf{v}) d^3 \mathbf{v} = f_\mathbf{p}(\mathbf{p}) m^3 d^3 \mathbf{v}
+\end{equation}
+
+\begin{equation}
+%PREM
+    f_\mathbf{p}(\mathbf{p}) = (2\pi mkT)^{-\frac{3}{2}} e^{-\frac{\mathbf{p}^2}{2mkT}}
+\end{equation}
+
+\begin{equation}
+    f_\mathbf{p}(\mathbf{p}) = (2\pi mkT)^{-\frac{3}{2}} e^{-\frac{(m\mathbf{v})^2}{2mkT}}
+\end{equation}
+
+\begin{equation}
+    f_\mathbf{v}(\mathbf{v}) d^3 \mathbf{v}  = (2\pi mkT)^{-\frac{3}{2}} e^{-\frac{m^2\mathbf{v}^2}{2mkT}} m^3 d^3 \mathbf{v}
+\end{equation}
+
+\begin{equation}
+    f_\mathbf{v}(\mathbf{v})  = m^3 (2\pi mkT)^{-\frac{3}{2}} e^{-\frac{m^2\mathbf{v}^2}{2mkT}}
+\end{equation}
+
+\subsection{Maxwell-Boltzmann: velocity vector distribution 2}
+
+\begin{equation}
+%PREM
+    f_\mathbf{v}(\mathbf{v})  = m^3 (2\pi mkT)^{-\frac{3}{2}} e^{-\frac{m^2\mathbf{v}^2}{2mkT}}
+\end{equation}
+
+\begin{equation}
+%PREM
+    \mathbf{v} = (v_x, v_y, v_z)
+\end{equation}
+
+\begin{equation}
+    \mathbf{v} \cdot \mathbf{v} = (v_x, v_y, v_z) \cdot (v_x, v_y, v_z)
+\end{equation}
+
+\begin{equation}
+    \mathbf{v}^2 = (v_x, v_y, v_z) \cdot (v_x, v_y, v_z)
+\end{equation}
+
+\begin{equation}
+    \mathbf{v}^2 = v_x^2 + v_y^2 + v_z^2
+\end{equation}
+
+\begin{equation}
+    f_\mathbf{v} (v_x, v_y, v_z)  = m^3 (2\pi mkT)^{-\frac{3}{2}} e^{-\frac{m (v_x^2 + v_y^2 + v_z^2)}{2kT}}
+\end{equation}
+
+\begin{equation}
+    f_\mathbf{v} (v_x, v_y, v_z)  = (\frac{m}{2\pi kT})^{\frac{3}{2}} e^{-\frac{m (v_x^2 + v_y^2 + v_z^2)}{2kT}}
+\end{equation}
+
+\subsection{Wave equation: plane wave eigenmodes}
+
+\begin{equation}
+%PREM
+    u(x,t) = e^{-i\omega t} f(x)
+\end{equation}
+
+\begin{equation}
+    \frac{\partial u(x,t)}{\partial t} = -i\omega e^{-i\omega t} f(x)
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{\partial }{\partial t}\frac{\partial u(x,t)}{\partial t} = \frac{\partial^2 u(x,t)}{\partial t^2}
+\end{equation}
+
+\begin{equation}
+    \frac{\partial }{\partial t}\frac{\partial u(x,t)}{\partial t} = \frac{\partial }{\partial t}((-i\omega) e^{-i\omega t} f(x))
+\end{equation}
+
+\begin{equation}
+    \frac{\partial }{\partial t}\frac{\partial u(x,t)}{\partial t} =(-i\omega) \frac{\partial }{\partial t}( e^{-i\omega t} f(x))
+\end{equation}
+
+\begin{equation}
+    \frac{\partial^2 u(x,t)}{\partial t^2} = (-i\omega) \frac{\partial }{\partial t}( e^{-i\omega t} f(x))
+\end{equation}
+
+\subsection{Wave equation: plane wave eigenmodes 2}
+
+\begin{equation}
+%PREM
+    \frac{\partial^2 u(x,t)}{\partial t^2} = (-i\omega) \frac{\partial }{\partial t}( e^{-i\omega t} f(x))
+\end{equation}
+
+\begin{equation}
+    \frac{\partial^2 u(x,t)}{\partial t^2} = (-i\omega)(-i\omega) e^{-i\omega t} f(x)
+\end{equation}
+
+\begin{equation}
+%PREM
+    i \cdot i = -1
+\end{equation}
+
+\begin{equation}
+    \frac{\partial^2 u(x,t)}{\partial t^2} = -\omega^2 e^{-i\omega t} f(x)
+\end{equation}
+
+\begin{equation}
+%PREM
+    \frac{\partial^2 u(x,t)}{\partial t^2} = c^2 \frac{\partial^2 u(x,t)}{\partial x^2}
+\end{equation}
+
+\begin{equation}
+    -\omega^2 e^{-i\omega t} f(x) = c^2 \frac{\partial^2 u(x,t)}{\partial x^2}
+\end{equation}
+
+\subsection{Wave equation: plane wave eigenmodes 3}
+
+\begin{equation}
+%PREM
+    c^2 \frac{\partial^2 u(x,t)}{\partial x^2} = -\omega^2 e^{-i\omega t} f(x)
+\end{equation}
+
+\begin{equation}
+    \frac{\partial^2 u(x,t)}{\partial x^2} = - \frac{\omega^2}{c^2}e^{-i\omega t} f(x)
+\end{equation}
+
+\begin{equation}
+%PREM
+    u(x,t) = e^{-i\omega t} f(x)
+\end{equation}
+
+\begin{equation}
+    \frac{\partial^2}{\partial x^2} (e^{-i\omega t} f(x)) = - \frac{\omega^2}{c^2} e^{-i\omega t} f(x)
+\end{equation}
+
+\begin{equation}
+    e^{-i\omega t} \frac{\partial^2}{\partial x^2} f(x) = - \frac{\omega^2}{c^2} e^{-i\omega t} f(x)
+\end{equation}
+
+\begin{equation}
+    \frac{\partial^2}{\partial x^2} f(x) = - \frac{\omega^2}{c^2} f(x)
+\end{equation}
+
+\subsection{Wave equation: plane wave eigenmodes 4}
+
+\begin{equation}
+%PREM
+    u(x,t) = A e^{-i(kx-\omega t)} + B e^{i(kx-\omega t)} 
+\end{equation}
+
+\begin{equation}
+%PREM
+    u(x,t) = \int_{-\infty}^{\infty} s(\omega) u(x,t) d\omega
+\end{equation}
+
+\begin{equation}
+    u(x,t) = \int_{-\infty}^{\infty} s(\omega) (A e^{-i(kx-\omega t)} + B e^{i(kx-\omega t)} ) d\omega
+\end{equation}
+
+\begin{multline}
+    u(x,t) = \int_{-\infty}^{\infty} s(\omega) A e^{-i(kx-\omega t)}d\omega \\ + \int_{-\infty}^{\infty} s(\omega) B e^{i(kx-\omega t)}  d\omega
+\end{multline}
+
+\begin{equation}
+%PREM
+    s_+(\omega) = As(\omega)
+\end{equation}
+
+\begin{equation}
+%PREM
+    s_-(\omega) = Bs(\omega)
+\end{equation}
+
+\begin{multline}
+    u(x,t) = \int_{-\infty}^{\infty} s_+(\omega) e^{-i(kx-\omega t)}d\omega \\ + \int_{-\infty}^{\infty} s_-(\omega) e^{i(kx-\omega t)}d\omega
+\end{multline}
+
+\subsection{Wave equation: plane wave eigenmodes 5}
+
+\begin{multline}
+%PREM
+    u(x,t) = \int_{-\infty}^{\infty} s_+(\omega) e^{-i(kx-\omega t)}d\omega \\ + \int_{-\infty}^{\infty} s_-(\omega) e^{i(kx-\omega t)}d\omega
+\end{multline}
+
+\begin{equation}
+%PREM
+    \omega = kc
+\end{equation}
+
+\begin{multline}
+    u(x,t) = \int_{-\infty}^{\infty} s_+(\omega) e^{-i(kx-kct)}d\omega \\ + \int_{-\infty}^{\infty} s_-(\omega) e^{i(kx-kct)}d\omega
+\end{multline}
+
+\begin{multline}
+    u(x,t) = \int_{-\infty}^{\infty} s_+(\omega) e^{-ik(x-ct)}d\omega \\ + \int_{-\infty}^{\infty} s_-(\omega) e^{ik(x-ct)}d\omega
+\end{multline}
+
+\begin{equation}
+%PREM
+    \int_{-\infty}^{\infty} s_+(\omega) e^{-ik(x-ct)}d\omega = F(x-ct)
+\end{equation}
+
+\begin{equation}
+%PREM
+    \int_{-\infty}^{\infty} s_-(\omega) e^{ik(x-ct)}d\omega = G(x+ct)
+\end{equation}
+
+\begin{equation}
+    u(x,t) = F(x-ct) + G(x+ct)
+\end{equation}
+
+\subsection{Wave equation: Hooke's law}
+
+\begin{equation}
+%PREM
+    F_H = F_{x+2h} - F_x
+\end{equation}
+
+\begin{equation}
+%PREM
+    F_N = ma(t)
+\end{equation}
+
+\begin{equation}
+%PREM
+    F_N = F_H
+\end{equation}
+
+\begin{equation}
+    ma(t) = F_{x+2h} - F_x
+\end{equation}
+
+\begin{equation}
+%PREM
+    a(t) = \frac{\partial^2}{\partial t^2} u(x+h,t)
+\end{equation}
+
+\begin{equation}
+    m\frac{\partial^2}{\partial t^2} u(x+h,t) = F_{x+2h} - F_x
+\end{equation}
+
+\subsection{Wave equation: Hooke's law 2}
+
+\begin{equation}
+%PREM
+    m\frac{\partial^2}{\partial t^2} u(x+h,t) = F_{x+2h} - F_x
+\end{equation}
+
+\begin{equation}
+%PREM
+    F_{x+2h} = ku(x+2h,t) - ku(x+h,t)
+\end{equation}
+
+\begin{equation}
+%PREM
+    F_x = ku(x+h,t) - ku(x,t)
+\end{equation}
+
+\begin{multline}
+     m \frac{\partial^2}{\partial t^2}u(x+h,t) = ku(x+2h,t) \\ - 2ku(x+h,t) + ku(x,t)
+\end{multline}
+
+\begin{multline}
+    \frac{\partial^2}{\partial t^2}u(x+h,t) = \frac{k}{m} \big( u(x+2h,t) - 2u(x+h,t) \\ + u(x,t) \big)
+\end{multline}
+
+\subsection{Wave equation: Hooke's law 3}
+
+\begin{multline}
+%PREM
+    \frac{\partial^2}{\partial t^2}u(x+h,t) = \frac{k}{m} \big( u(x+2h,t) - 2u(x+h,t) \\ + u(x,t) \big)
+\end{multline}
+
+\begin{equation}
+%PREM
+    N = \frac{L}{h}
+\end{equation}
+
+\begin{equation}
+%PREM
+    m = \frac{M}{N}
+\end{equation}
+
+\begin{equation}
+%PREM
+    k = KN
+\end{equation}
+
+\begin{equation}
+    \frac{k}{m} = \frac{KN^2}{M}
+\end{equation}
+
+\begin{equation}
+    \frac{k}{m} = \frac{KL^2}{Mh^2}
+\end{equation}
+
+\begin{multline}
+    \frac{\partial^2}{\partial t^2}u(x+h,t) = \frac{KL^2}{Mh^2} \big( u(x+2h,t) - 2u(x+h,t) \\ + u(x,t) \big)
+\end{multline}
+
+\subsection{Wave equation: stress pulse in a bar}
+
+\begin{multline}
+%PREM
+    \frac{\partial^2}{\partial t^2}u(x+h,t) = \frac{KL^2}{Mh^2} \big( u(x+2h,t) - 2u(x+h,t) \\ + u(x,t) \big)
+\end{multline}
+
+\begin{multline}
+    \lim_{h\to 0} \frac{\partial^2 u(x+h,t)}{\partial t^2} = 
+    \lim_{h\to 0}\frac{KL^2}{Mh^2} \big( u(x+2h,t) \\ - 2u(x+h,t) + u(x,t) \big)
+\end{multline}
+
+\begin{multline}
+%PREM
+    \lim_{h\to 0} \frac{u(x+2h,t) - 2u(x+h,t) + u(x,t)}{h^2} = \\ \frac{\partial^2 u(x,t)}{\partial x^2} 
+\end{multline}
+
+\begin{multline}
+    \lim_{h\to 0} \frac{\partial^2 u(x+h,t)}{\partial t^2} = \frac{KL^2}{M} \frac{\partial^2 u(x,t)}{\partial x^2} 
+\end{multline}
+
+\begin{equation}
+    \lim_{h\to 0} \frac{\partial^2 u(x+h,t)}{\partial t^2} = \frac{\partial^2 u(x,t)}{\partial t^2}
+\end{equation}
+
+\begin{equation}
+    \frac{\partial^2 u(x,t)}{\partial t^2} =  \frac{KL^2}{M} \frac{\partial^2 u(x,t)}{\partial x^2} 
+\end{equation}
+
+\subsection{Wave equation: stress pulse in a bar 2}
+
+\begin{equation}
+%PREM
+    \frac{\partial^2 u(x,t)}{\partial t^2} =  \frac{KL^2}{M} \frac{\partial^2 u(x,t)}{\partial x^2} 
+\end{equation}
+
+\begin{equation}
+%PREM
+    K = \frac{EA}{L}
+\end{equation}
+
+\begin{equation}
+    \frac{\partial^2 u(x,t)}{\partial t^2} = \frac{EAL}{M} \frac{\partial^2 u(x,t)}{\partial x^2}
+\end{equation}
+
+\begin{equation}
+%PREM
+    \rho = \frac{M}{V}
+\end{equation}
+
+\begin{equation}
+%PREM
+    V=AL
+\end{equation}
+
+\begin{equation}
+    \rho = \frac{M}{AL}
+\end{equation}
+
+\begin{equation}
+    \frac{1}{\rho} = \frac{AL}{M}
+\end{equation}
+
+\begin{equation}
+    \frac{\partial^2 u(x,t)}{\partial t^2} = \frac{E}{\rho} \frac{\partial^2 u(x,t)}{\partial x^2}
+\end{equation}
 
 \end{document}
-
-
