@@ -71,7 +71,7 @@ def optimize_score(ref, pred, metric_name, return_equations=False):
 
     # this then finds the optimal place to put the empty strings
     # such that the averaged score is maximised
-    avg_scores, alignments = []. []
+    avg_scores, alignments = [], []
     for positions in combinations(range(len(ref_eqs)+1), diff):
         ref_copy = ref_eqs.copy()
         pred_copy = pred_eqs.copy()
