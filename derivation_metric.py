@@ -36,7 +36,6 @@ def score(ref, pred, metric_name, metric):
             return 0
     except:
         pass
-        
     
     try:
         if metric_name == "rouge":
