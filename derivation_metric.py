@@ -69,10 +69,16 @@ def optimize_score(ref, pred, metric_name, return_equations=False):
     # this finds the length difference between ref and pred derivations (by equation number)
     diff = abs(len(ref_eqs) - len(pred_eqs))
 
+    positions_range = len(ref_eqs) + 1 if len(ref_eqs) < len(pred_eqs) else len(pred_eqs) + 1
+    
+    # if difference in derivation lengths is greater than one of the actual derivations, return 0
+    if diff > positions_range:
+        return 0
+
     # this then finds the optimal place to put the empty strings
     # such that the averaged score is maximised
     avg_scores, alignments = [], []
-    for positions in combinations(range(len(ref_eqs)+1), diff):
+    for positions in combinations(range(positions_range), diff):
         ref_copy = ref_eqs.copy()
         pred_copy = pred_eqs.copy()
         if len(ref_eqs) < len(pred_eqs):
