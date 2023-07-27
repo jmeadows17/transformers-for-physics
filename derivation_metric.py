@@ -27,7 +27,10 @@ def balanced_brackets(eq):
 def score(ref, pred, metric_name, metric):
     # equation level checks go here
     
-    if not balanced_brackets(pred) or '=' not in pred:
+    if not balanced_brackets(pred):
+        return 0
+
+    if ('=' not in pred) and ("\\geq" not in pred) and ("\\leq" not in pred):
         return 0
 
     # Check if LHS and RHS are identical (exact matching)
